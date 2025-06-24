@@ -1,13 +1,12 @@
 
 
-tasks:
   #TA01_Setup:
   #  TA01_A_CreateDatabases:
   #    taskName: TA01_A_CreateDatabases
   #    prd_db: "prd"
   #    source_db: "source"
   #    raw_db: "raw"
-
+inactive:
   TA05_PassiveRsyncWatcher:
     TA05_0_PassiveRsyncWatcher:
       taskName: TA05_0_PassiveRsyncWatcher
@@ -179,13 +178,13 @@ tasks:
 
 
     
+tasks:
 
   TA23_CreateWoodMaster:
-    TA23_0_CreateWoodMaster:
-      taskName: TA23_0_CreateWoodMaster
+    TA23_0_CreateWoodMasterPotential:
+      taskName: TA23_0_CreateWoodMasterPotential
       HDF5_file_path: "data/productionData/primaryData.hdf5"
       woodTypeMapper_path: "app/config/mapper/TA23_CreateWoodmaster/TA23_0_woodTypeMapper.yaml"
-      woodTableSource: WoodTableA
 
 
   TA25_CreateWoodHDF:
@@ -205,13 +204,10 @@ tasks:
       job_template_path: app/config/templates/DoE_job_template.yaml
       output_jobs_yaml: path/to/DoE_jobs_expanded.yaml
 
-  TA29_WorkerJobBuilder:
-    TA29_A_SegmentationJobBuilder:
-      taskName: TA29_A_SegmentationJobBuilder
-      segmentationFilter_config_path: app/config/segmentationFilter_config.yaml
-      DoE_job_template_path: app/config/templates/DoE_job_template.yaml
 
-
+  TA30_JobBuilder:
+    TA30_0_JobBuilderWrapper:
+      taskName: TA30_0_JobBuilderWrapper
 
 
   TA35_BackendOrchestrator:
@@ -232,3 +228,7 @@ tasks:
       
 
 
+  TA41_Segmentation:
+    TA41_0_SegmentationOrchestrator:
+      taskName: TA41_0_SegmentationOrchestrator
+      HDF5_file_path: "data/productionData/primaryData.hdf5"

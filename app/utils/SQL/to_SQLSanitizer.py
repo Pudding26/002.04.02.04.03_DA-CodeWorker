@@ -51,8 +51,8 @@ class to_SQLSanitizer():
         df_clean.replace(to_replace=self.fake_nulls, value=None, inplace=True)
         df_clean = df_clean.where(pd.notnull(df_clean), None)
 
-        logging.debug2(f"✅ SQLSanitizer finished: replaced {total_fixes} fake nulls. "
-                       f"Per-column summary → {col_fix_summary}")
+        logging.debug3(f"✅ SQLSanitizer finished: replaced {total_fixes} fake nulls.")
+        logging.debug2(f"Per-column fixes → {col_fix_summary}\n")
         return df_clean
 
     def to_python_scalars(self, df: pd.DataFrame, log: bool = True) -> pd.DataFrame:
@@ -177,13 +177,18 @@ class to_SQLSanitizer():
 
 
         # ------------------------------------------------------------------ summary
-        logging.debug3(f"\n📋Numeric Coercion Complete: {total_coerced} coerced, {total_nullified} nullified")
+        coe_summary = nul_summary = ""
         if coerced_columns:
-            summary = ', '.join(f"{k}={v}" for k, v in coerced_columns.items())
-            logging.debug2(f"🔢 Numeric Coercion: {summary}")
+            coe_summary = ', '.join(f"{k}={v}" for k, v in coerced_columns.items())
         if nullified_columns:
-            summary = ', '.join(f"{k}={v}" for k, v in nullified_columns.items())
-            logging.debug2(f"⚠️ Numeric Nulls: {summary}")
+            nul_summary = ', '.join(f"{k}={v}" for k, v in nullified_columns.items())
+        logging.debug3(f"\n📋 Numeric Coercion Complete: {total_coerced} coerced, {total_nullified} nullified")
+        logging.debug2("🔤 Coercion Summary:\n"
+            f"   • Total columns coerced: {len(coerced_columns)}\n"
+            f"   • nullified: {nul_summary}\n"
+            f"   • coerced: {coe_summary}\n"
+        )
+
 
 
         return df
@@ -242,13 +247,18 @@ class to_SQLSanitizer():
 
             df[field_name] = coerced
 
-        logging.debug3(f"\n📋 String Coercion Complete: {total_coerced} coerced, {total_nullified} nullified")
+
+        coe_summary = nul_summary = ""
         if coerced_columns:
-            summary = ', '.join(f"{k}={v}" for k, v in coerced_columns.items())
-            logging.debug2(f"🔤 String Coercion: {summary}")
+            coe_summary = ', '.join(f"{k}={v}" for k, v in coerced_columns.items())
         if nullified_columns:
-            summary = ', '.join(f"{k}={v}" for k, v in nullified_columns.items())
-            logging.debug2(f"⚠️ String Nulls: {summary}")
+            nul_summary = ', '.join(f"{k}={v}" for k, v in nullified_columns.items())
+        logging.debug3(f"\n📋 String Coercion Complete: {total_coerced} coerced, {total_nullified} nullified")
+        logging.debug2("🔤 Coercion Summary:\n"
+            f"   • Total columns coerced: {len(coerced_columns)}\n"
+            f"   • nullified: {nul_summary}\n"
+            f"   • coerced: {coe_summary}\n"
+        )
 
 
         return df
@@ -475,11 +485,8 @@ class to_SQLSanitizer():
                 else:
                     logging.debug3(f"  - Column '{field_name}': ✅ no invalid values")
 
-        logging.debug3("\n🧹 Enum Validation Summary:")
-        logging.debug2(
-            f"\n🔎 Total distinct invalid enum values across all columns: "
-            f"{len(total_distinct_invalids)}\n"
-        )
+        logging.debug3(f"\n🧹 Enum Validation Complete. Detetected a total of {len(total_distinct_invalids)}")
+
 
         if dropped_total == 0:
             logging.debug2("✅ No rows dropped due to enum mismatches.")

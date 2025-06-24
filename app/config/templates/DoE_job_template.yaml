@@ -1,4 +1,4 @@
-job_uuid: "{job_uuid}"
+DoE_UUID: "{DoE_UUID}"
 
 primary_data:
   sourceNo: "{sourceNo}"
@@ -12,25 +12,16 @@ primary_data:
   noShotsRange: "{noShotsRange}"
 
 segmentation:
-  filterNo: "{segmentation}"
+  filterNo: "{filterNo}"
 
 secondary_data:
-  2ndNo: "{secondary_data}"
+  secondaryDataBins: "{secondaryDataBins}"
 
 modelling:
-  modelID: "{modeling}"
-
-
-
-
-segmentation:
-  filterNo: "{filterNo}"  # Will be resolved from filterMap.yaml
-
-secondary_data:
-  SD_ID: "{secondary_data}"
+  metricModelNo: "{metricModelNo}"
 
 preprocessing:
-  preProcessingNo: "{preProcessingNo}"  # Will be resolved from preProcessingMap.yaml
+  preProcessingNo: "{preProcessingNo}"  
 
 modeling:
-  metricModelNo: "{metricModelNo}"         # Will be resolved from metricModelMap.yaml
+  metricModelNo: "{metricModelNo}"        

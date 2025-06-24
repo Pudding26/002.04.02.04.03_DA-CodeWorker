@@ -8,7 +8,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.tasks.TA01_setup.TA01_A_SQLSetup import TA01_A_SQLSetup
 
-from app.utils.SQL.DBEngine import create_all_tables
 from app.utils.HDF5.HDF5Utils import HDF5Utils
 from app.utils.controlling.TaskController import TaskController
 
@@ -20,9 +19,11 @@ LoggingHandler(logging_level="DEBUG-2")
 async def lifespan(app: FastAPI):
     
     TA01_A_SQLSetup.createDatabases()
+    TA01_A_SQLSetup.create_all_tables()
+
     TaskController.clean_orphaned_tasks_on_start()
 
-    create_all_tables()
+    
 
     directories = [
     "data/rawData/",

@@ -1,27 +1,159 @@
-import logging
-import os
+from __future__ import annotations
+import logging, json
 import pandas as pd
 from typing import List
+from uuid import uuid4
+from datetime import datetime
+import hashlib
 import yaml
-import random
+import os
+import copy
+import numpy as np
 
-from app.tasks.TaskBase import TaskBase
-from app.utils.SQL.SQL_Df import SQL_Df
-from app.utils.SQL.SQL_Dict import SQL_Dict
-from app.utils.SQL.models.temp.api.api_DoEJobs import DoEJobs_Out
-from app.utils.SQL.models.production.api.api_WoodTableA import WoodTableA_Out
-from app.utils.SQL.models.production.api.api_WoodTableB import WoodTableB_Out
-from app.utils.SQL.models.production.api.api_WoodMaster import WoodMaster_Out
+from sqlalchemy.orm import Session
+
+from app.utils.general.HelperFunctions import add_hashed_uuid_column
+
 
 from app.utils.dataModels.FilterModel.FilterModel import FilterModel
-from app.utils.dataModels.FilterModel.FilterModel import Border
+from app.utils.dataModels.Jobs.JobEnums import JobKind, JobStatus
+
+from app.utils.dataModels.Jobs.SegmenterJob import (
+    SegmenterJob, SegmenterJobInput
+)
+from app.utils.dataModels.Jobs.ExtractorJob import ExtractorJob, ExtractorJobInput
+
+
+
+from app.utils.SQL.models.jobs.api_DoEJobs import DoEJobs_Out
+from app.utils.SQL.models.jobs.api_WorkerJobs import WorkerJobs_Out
+from app.utils.SQL.models.production.api.api_WoodMaster import WoodMaster_Out
+
 
 
 
 #from app.utils.SQL.models.temp.api.SegmentationJobs_out import SegmentationJobs_out
 
 
-class TA29_A_SegmentationJobBuilder(TaskBase):
+class TA30_C_ExtractorJobBuilder:
+    """Build and persist ExtractorJobs (mirrors ProviderJobBuilder)."""
+
+    @classmethod
+    def build(cls) -> None:
+        filter_model = FilterModel.from_human_filter({"contains": {"status": "in_progress", "job_type": "segmenter"}})
+                
+        job_df_raw = WorkerJobs_Out.fetch(
+            filter_model=filter_model,  # No filter needed, we will process all DoE jobs
+            stream=False,
+        )
+
+        if job_df_raw.empty:
+            logging.info("[ExtractorJobBuilder] Nothing to build.")
+            return
+        logging.debug3(f"[ExtractorJobBuilder] Found {len(job_df_raw)} Segmenter jobs to process.")
+
+        segmenter_df = job_df_raw.copy()
+        to_create: List[ExtractorJob] = []
+        to_update: List[ExtractorJob] = []
+        
+        exisitng = WorkerJobs_Out.fetch_distinct_values(column="job_uuid")  # returns set[str]
+
+
+        for jobNo, row in segmenter_df.iterrows():
+            # Parse segmenter job
+            segmenter_job = SegmenterJob.from_sql_row(row)
+
+            extractor_input = copy.deepcopy(segmenter_job.attrs.extractorJobinput)
+            if not extractor_input:
+                logging.warning(f"SegmenterJob {segmenter_job.job_uuid} has no extractorJobinput")
+                continue
+
+            if extractor_input.mask is None:
+                logging.warning(f"SegmenterJob {segmenter_job.job_uuid} has no mask in extractorJobinput")
+                continue
+
+
+
+            # Build new ExtractorJob
+            extractor_job = ExtractorJob(
+                job_uuid=f"extractor_{str(segmenter_job.job_uuid).replace('segmenter_', '')}",
+                parent_job_uuids=segmenter_job.parent_job_uuids,
+                status=JobStatus.READY,
+                input=extractor_input,
+            )
+
+            if extractor_job.job_uuid in exisitng:
+                # If job already exists, update it
+                to_update.append(extractor_job)
+
+            else:
+                # If job does not exist, create it
+                to_create.append(extractor_job)
+
+            # Update segmenter job
+            segmenter_job.status = JobStatus.DONE.value
+            segmenter_job.attrs.extractorJobinput.mask = None
+            
+
+            
+            segmenter_job.update_db(fields_to_update=["status","payload"])
+
+            if jobNo % 100 == 0 or jobNo == len(segmenter_df) - 1:
+                logging.debug2(
+                    "Processed %d/%d jobs: %s",
+                    jobNo + 1,
+                    len(segmenter_df),
+                    extractor_job.job_uuid
+                )
+
+        logging.info(
+            "[SegmenterJobBuilder] New: %d, Update: %d, Total: %d",
+            len(to_create),
+            len(to_update),
+            len(to_create) + len(to_update),
+        )
+
+
+        from app.tasks.TA30_JobBuilder.TA30_0_JobBuilderWrapper import TA30_0_JobBuilderWrapper
+        TA30_0_JobBuilderWrapper.store_and_update(
+            to_create=to_create, to_update=to_update
+        )
+
+
+
+
+    
+
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     def setup(self):
         self.controller.update_message("Initializing Segmentation Job Builder")
         self.controller.update_progress(0.01)
@@ -106,6 +238,9 @@ class TA29_A_SegmentationJobBuilder(TaskBase):
         if "maxShots" in include_cols:
             include_cols.remove("maxShots")
 
+        if "filterNo" in include_cols:
+            include_cols.remove("filterNo")
+
         if "totalNumberShots" not in include_cols:
             include_cols.append("totalNumberShots")
 
@@ -136,8 +271,8 @@ class TA29_A_SegmentationJobBuilder(TaskBase):
             if i % 10 == 0 or i == total_jobs - 1:
                 logging.debug2(f"[TA30_A] Processing job {i}/{total_jobs}")
 
-            with self.suppress_logging():
-                new_subset = WoodTableB_Out.fetch(
+            with self.suppress_logging(): # TODO: Split WoodTAble in WoodMAster and Woodmaster Theroetical
+                new_subset = WoodMaster_Out.fetch(
                     filter_model=filter_model,
                     stream=False
                 )
@@ -145,8 +280,8 @@ class TA29_A_SegmentationJobBuilder(TaskBase):
             len_new_subset = len(new_subset)
             len_old_subset_before = len(segmentationJobs_df)
 
-            if not new_subset.empty:
-                segmentationJobs_df = pd.concat([segmentationJobs_df, new_subset], ignore_index=True)
+            if len_new_subset > 0:
+                segmentationJobs_df = pd.concat([segmentationJobs_df, new_subset]).drop_duplicates(subset='stackID', keep='first')
 
             len_old_subset_after = len(segmentationJobs_df)
             len_delta = len_old_subset_after - len_old_subset_before
@@ -159,44 +294,7 @@ class TA29_A_SegmentationJobBuilder(TaskBase):
 
 
 
-            
 
-
-
-        filter_sets = self._extract_filter_sets()
-        
-        logging.debug3("[TA30_A] Starting job filtering.")
-
-        logging.debug2("[TA30_A] Loading WoodTableA via Pydantic model.")
-        woodTable_df = WoodTableA_Out.fetch(method="all")
-        if woodTable_df.empty:
-            raise RuntimeError("woodTable_df table is empty or missing.")
-        logging.debug2(f"[TA30_A] Loaded wood table with {len(woodTable_df)} rows.")
-
-        all_conditions = []
-        for job in self.general_job_df.to_dict(orient="records"):
-            conditions = []
-            for key, values in job.items():
-                if isinstance(values, list) and key in woodTable_df.columns:
-                    conditions.append(woodTable_df[key].isin(values))
-            if conditions:
-                combined = conditions[0]
-                for cond in conditions[1:]:
-                    combined |= cond  # OR filtering
-                all_conditions.append(combined)
-
-        if not all_conditions:
-            raise RuntimeError("No filter conditions constructed from DoE jobs.")
-        
-        final_filter = all_conditions[0]
-        for cond in all_conditions[1:]:
-            final_filter |= cond
-
-        jobs_df = woodTable_df[final_filter].copy()
-        if jobs_df.empty:
-            raise RuntimeError("No stackIDs matched the provided filter conditions.")
-
-        logging.debug2(f"[TA30_A] Filtered down to {len(jobs_df)} rows after OR filtering.")
 
         jobs_df["dest_filterNo"] = jobs_df["filterNo"]  # If available
         jobs_df["dest_stackID"] = jobs_df.apply(

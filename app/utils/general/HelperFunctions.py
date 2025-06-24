@@ -78,3 +78,30 @@ def generate_deterministic_string_uuid(
             return int_to_base62(int_hash)
 
         return series.astype(str).map(hash_to_base62)
+
+
+def add_hashed_uuid_column(df: pd.DataFrame, column_name: str = "DoE_UUID", prefix: str = "DoE_", hash_len: int = 10) -> pd.DataFrame:
+    # 1. Sort columns alphabetically
+    sorted_cols = sorted(df.columns)
+
+    # 2. Convert to string safely
+    def safe_str(val):
+        if pd.isna(val):
+            return ""
+        if isinstance(val, pd.Timestamp):
+            return val.isoformat()
+        return str(val)
+
+    # 3. Create a DataFrame of stringified values
+    df_str = df[sorted_cols].applymap(safe_str)
+
+    # 4. Join each row's values into a single string (separator is optional)
+    row_strs = df_str.apply(lambda row: "|".join(row.values), axis=1)
+
+    # 5. Vectorized SHA-1 hash
+    hashes = row_strs.map(lambda x: hashlib.sha1(x.encode()).hexdigest()[:hash_len])
+
+    # 6. Add as new column
+    df[column_name] = prefix + hashes
+
+    return df

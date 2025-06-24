@@ -10,7 +10,7 @@ from uuid import uuid4
 from tqdm import tqdm
 
 from pydantic import BaseModel
-from app.utils.SQL import enums
+from app.utils.SQL.models import enums
 
 from app.utils.SQL.errors import BulkInsertError
 
@@ -27,11 +27,12 @@ from app.utils.SQL.to_SQLSanitizer import to_SQLSanitizer
 from app.utils.QM.PydanticQM import PydanticQM
 
 
-from typing import List, Type, TypeVar, Optional, Any, Dict, ClassVar, Union
+from typing import List, Type, TypeVar, Optional, Any, Dict, ClassVar, Union, get_origin
 
 
 
 from app.utils.SQL.DBEngine import DBEngine
+
 
 
 _cid: ContextVar[str] = ContextVar("_cid")
@@ -63,7 +64,7 @@ class api_BaseModel(BaseModel):
     def store_dataframe(
         cls,
         df: pd.DataFrame,
-        db_key: str,
+        db_key: str = None,
         method: str = "append",
         insert_method: str = "bulk_save_objects",
     ) -> None:
@@ -77,25 +78,48 @@ class api_BaseModel(BaseModel):
         """
         from app.utils.SQL.DBEngine import DBEngine
         from sqlalchemy.orm import sessionmaker
+        
+        
+        if db_key is not None:
+            logging.warning(f"🔍 DEPRECATED; db_key is fetched from api_instance.")
+
+        db_key = cls.db_key
+
+
 
         engine  = DBEngine(db_key).get_engine()
         Session = sessionmaker(bind=engine)
         session = Session()
+        table_name = cls.orm_class.__tablename__
 
         try:
+            def _log_step(df, step_name, steps_log):
+                shape = df.shape
+                steps_log.append(f"{step_name}: shape = {shape}")
+                return df
             # 1.  sanitise → coerce → drop incomplete
+            
+            steps_log = []
             df = df.copy()
-            df = to_SQLSanitizer().sanitize(df)
-            df = to_SQLSanitizer.sanitize_columns_from_model(df, cls)
-            df = to_SQLSanitizer.coerce_numeric_fields_from_model(df, cls)
-            df = to_SQLSanitizer.coerce_string_fields_from_model(df, cls)
-            df = to_SQLSanitizer.coerce_datetime_fields_from_model(df, cls)
-            df = to_SQLSanitizer.drop_incomplete_rows_from_model(df, cls)
-            df = to_SQLSanitizer.drop_invalid_enum_rows_from_model(df, cls)
-            df = to_SQLSanitizer().sanitize(df)
+            df = _log_step(to_SQLSanitizer().sanitize(df), "sanitize", steps_log)
+            df = _log_step(to_SQLSanitizer.sanitize_columns_from_model(df, cls), "sanitize_columns_from_model", steps_log)
+            df = _log_step(to_SQLSanitizer.coerce_numeric_fields_from_model(df, cls), "coerce_numeric_fields_from_model", steps_log)
+            df = _log_step(to_SQLSanitizer.coerce_string_fields_from_model(df, cls), "coerce_string_fields_from_model", steps_log)
+            df = _log_step(to_SQLSanitizer.coerce_datetime_fields_from_model(df, cls), "coerce_datetime_fields_from_model", steps_log)
+            df = _log_step(to_SQLSanitizer.drop_incomplete_rows_from_model(df, cls), "drop_incomplete_rows_from_model", steps_log)
+            df = _log_step(to_SQLSanitizer.drop_invalid_enum_rows_from_model(df, cls), "drop_invalid_enum_rows_from_model", steps_log)
+            df = _log_step(to_SQLSanitizer().sanitize(df), "final sanitize", steps_log)
+
+            summary = "\n".join(steps_log)
+            logging.debug3(f"\n=== DataFrame Shape Report ===\n{summary}")
+
+
+
 
             # 2.  validate with Pydantic
             validated = _model_validate_dataframe(cls, df)
+
+
 
             # 3.  optional table truncate
             if method == "replace":
@@ -235,8 +259,8 @@ class api_BaseModel(BaseModel):
             builder = SQL_FetchBuilder(orm_class, filter_model)
             stmt = builder.build_select(method, columns).execution_options(stream_results=True)
 
-            logging.debug2("📝 SQL built", extra=ctx)
-            logging.debug2(
+            logging.debug1("📝 SQL built", extra=ctx)
+            logging.debug1(
                 stmt.compile(compile_kwargs={"literal_binds": True}),
                 extra=ctx,
             )
@@ -267,10 +291,23 @@ class api_BaseModel(BaseModel):
             session.close()
 
 
-
-
-
-
+    @classmethod
+    def fetch_distinct_values(
+        cls,
+        column: str,
+        db_key: Optional[str] = None,
+        orm_class: Optional[type] = None
+    ) -> list:
+        """
+        Efficiently fetch distinct values of a single column from the DB.
+        """
+        from app.utils.SQL.models.methods._fetch_distinct_values import _fetch_distinct_values
+        return _fetch_distinct_values(
+            cls=cls,
+            column=column,
+            db_key=db_key,
+            orm_class=orm_class
+        )
 
 
 
@@ -324,6 +361,40 @@ class api_BaseModel(BaseModel):
         return to_SQLSanitizer().detect_fakes(df)
 
 
+    @classmethod
+    def update_row(cls, row_data: dict, match_cols: list[str] = ["job_uuid"], db_key: Optional[str] = None) -> None:
+        """
+        Generic update method: match on `match_cols`, update all values in `row_data`.
+        Assumes row exists.
+        """
+        from sqlalchemy.orm import Session
+        from app.utils.SQL.DBEngine import DBEngine
+
+        db_key = db_key or getattr(cls, "db_key", "raw")
+        orm_class = getattr(cls, "orm_class", None)
+        if orm_class is None:
+            raise ValueError(f"{cls.__name__} must define orm_class.")
+
+        session: Session = DBEngine(db_key).get_session()
+        try:
+            filters = {col: row_data[col] for col in match_cols}
+            row = session.query(orm_class).filter_by(**filters).first()
+
+            if not row:
+                raise ValueError(f"No matching row found using {filters}")
+
+            for k, v in row_data.items():
+                if hasattr(row, k):
+                    setattr(row, k, v)
+
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+
 
     @classmethod
     def validate_dataframe(cls, df: pd.DataFrame, groupby_col: Any = None) -> pd.DataFrame:
@@ -346,8 +417,28 @@ class api_BaseModel(BaseModel):
         """
         return df.astype(object).where(pd.notnull(df), None)
 
+    @classmethod
+    def pydantic_model_to_dtype_dict(cls: type[BaseModel]) -> dict[str, type]:
+        dtype_map = {}
+        for name, field in cls.model_fields.items():
+            outer_type = field.annotation
+            origin = get_origin(outer_type) or outer_type
 
+            # Handle common typing cases
+            if origin in (list, dict):
+                dtype_map[name] = object
+            elif origin is float:
+                dtype_map[name] = float
+            elif origin is int:
+                dtype_map[name] = int
+            elif origin is bool:
+                dtype_map[name] = bool
+            elif origin is str:
+                dtype_map[name] = str
+            else:
+                dtype_map[name] = object  # fallback
 
+        return dtype_map
 
 ####### DEPRECATED METHODS ########
 

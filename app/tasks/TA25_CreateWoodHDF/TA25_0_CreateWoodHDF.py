@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import List, Optional, Dict, Union
 import pandas as pd
+from datetime import timezone
 
 
 from threading import Lock
@@ -21,10 +22,18 @@ from app.tasks.TA25_CreateWoodHDF._create_stack_and_opt_crop import _create_stac
 
 from app.utils.crawler.Crawler import Crawler
 
+from app.utils.dataModels.Jobs.util.RetryInfo import RetryInfo
+from app.utils.dataModels.FilterModel.FilterModel import FilterModel
 
-from app.utils.SQL.models.temp.api.api_PrimaryDataJobs import PrimaryDataJobs_Out
+from app.tasks.TA23_CreateWoodMaster.TA23_0_CreateWoodMasterPotential import TA23_0_CreateWoodMasterPotential
 
-from app.tasks.TA23_CreateWoodMaster.TA23_0_CreateWoodMaster import TA23_0_CreateWoodMaster
+from app.utils.dataModels.Jobs.ProviderJob import ProviderJob
+from app.utils.dataModels.Jobs.JobEnums import JobStatus
+from app.utils.SQL.models.jobs.api_WorkerJobs import WorkerJobs_Out
+
+
+
+
 
 class WoodJobAttrs(BaseModel):
     Level1: Dict[str, Union[str, int]]
@@ -62,14 +71,19 @@ class TA25_0_CreateWoodHDF(TaskBase):
         self._load_jobs_from_db()
 
 
+
     def run(self):
         try:
             logging.debug2("🚀 Starting main run loop")
+            if len(self.jobs) ==0:
+                sleep_time = self.instructions.get("sleep_time", 1)
+                logging.debug5(f"📦 No ProviderJobs found in the database. Sleeping for {sleep_time} s")
+                time.sleep(sleep_time)
+                return
             self.controller.update_message("Building job pipeline")
             self._run_pipeline(self.jobs)
             self.controller.update_message("Finalizing WoodMaster")
-            from app.tasks.TA23_CreateWoodMaster.TA23_0_CreateWoodMaster import TA23_0_CreateWoodMaster
-            TA23_0_CreateWoodMaster.refresh_woodMaster(hdf5_path=self.instructions["HDF5_file_path"])
+            TA23_0_CreateWoodMasterPotential.refresh_woodMaster(hdf5_path=self.instructions["HDF5_file_path"])
             self.controller.finalize_success()
             logging.info("✅ Task completed successfully")
         except Exception as e:
@@ -86,97 +100,58 @@ class TA25_0_CreateWoodHDF(TaskBase):
         self.controller.archive_with_orm()
 
     def _load_jobs_from_db(self):
-        logging.debug2("📥 Loading jobs from database")
-        df = PrimaryDataJobs_Out.fetch_all()
-        self.controller.update_item_count(len(df))
-        logging.debug2(f"📊 {len(df)} records loaded from DB")
-        if self.instructions.get("debug", False) == True:
-            logging.debug2("🔍 Debug mode enabled, reducing job count for testing")
-            df = df[::self.instructions.get("debug_sample_rate", 25)]
-            logging.debug2(f"📊 Reduced job count to {len(df)} for debug mode")
-        hdf5_path_map = {
-            "DS01": "data/rawData/primary/DS01.hdf5",
-            "DS04": "data/rawData/primary/DS04.hdf5",
-            "DS07": "data/rawData/primary/DS07.hdf5",
-            "DS11": "https://iiif-images.lib.ncsu.edu/iiif/2/insidewood-{id}/full/full/0/default.jpg"
-        }
+        logging.debug2("📥 Loading ProviderJobs from database")
 
-        for i, row in enumerate(df.to_dict(orient="records")):
-            rel_paths = row["sourceFilePath_rel"]
-            if isinstance(rel_paths, str):
-                import json
-                rel_paths = json.loads(rel_paths)
 
-            job = WoodJob(
-                jobNo=i,
-                input=WoodJobInput(
-                    src_file_path=hdf5_path_map[row["sourceNo"]],
-                    src_ds_rel_path=rel_paths,
-                    dest_rel_path=row["hdf5_dataset_path"],
-                    stored_locally = row["sourceStoredLocally"]
-                ),
-               attrs = WoodJobAttrs(
-                    Level1={
-                        "woodType": row.get("woodType"),
-                    },
-                    Level2={
-                        "family": row.get("family"),
-                        "genus": row.get("genus"),
-                    },
-                    Level3={
-                        "genus": row.get("genus"),
-                    },
-                    Level4={
-                        "species": row.get("species", "unknown") or "unknown",
-                        "engName": row.get("engName", "unknown") or "unknown",
-                        "deName": row.get("deName", "unknown") or "unknown",
-                        "frName": row.get("frName", "unknown") or "unknown",
-                        "japName": row.get("japName", "unknown") or "unknown"
-                    },
-                    Level5={
-                        "sourceID": row["sourceID"],  # preserve ID
-                        "sourceNo": row["sourceNo"]
-                    },
-                    Level6={
-                        "specimenID": row["specimenID"],
-                        "microscopicTechnic": row.get("microscopicTechnic", "unknown") or "unknown",
-                        "institution": row.get("institution", "unknown") or "unknown",
-                        "institutionCode": row.get("institutionCode", "unknown") or "unknown",
-                        "contributor": row.get("contributor", "unknown") or "unknown",
-                        "citeKey": row.get("citeKey", "unknown") or "unknown",
-                        "IFAW_code": row.get("IFAW_code", "unknown") or "unknown",
-                        "samplingPoint": row.get("samplingPoint", "unknown") or "unknown",
-                        "origin": row.get("origin", "unknown") or "unknown"
-                    },
-                    Level7={
-                        "sampleID": row["sampleID"],
-                        "digitizedDate": row.get("digitizedDate", "unknown") or "unknown",
-                        "view": row.get("view", "unknown") or "unknown",
-                        "lens": row.get("lens", "unknown") or "unknown",
-                        "totalNumberShots": row.get("totalNumberShots", "unknown") or "unknown"
-                    },
-                    dataSet_attrs={
-                        "bitDepth": None,
-                        "colorDepth": None,
-                        "colorSpace": None,
-                        "pixelSize_um_per_pixel": row.get("pixelSize_um_per_pixel", "unknown") or "unknown",
-                        "DPI": row.get("DPI", "unknown") or "unknown",
-                        "area_x_mm": row.get("area_x_mm", "unknown") or "unknown",
-                        "area_y_mm": row.get("area_y_mm", "unknown") or "unknown",
-                        "pixel_x": None,
-                        "pixel_y": None,
-                        "numericalAperature_NA": row.get("numericalAperature_NA", "unknown") or "unknown",
-                        "GPS_Alt": row.get("GPS_Alt", None),
-                        "GPS_Lat": row.get("GPS_Lat", None),
-                        "GPS_Long": row.get("GPS_Long", None),
-                        "digitizedDate": row.get("digitizedDate", None),
-                        "raw_UUID": ", ".join(row["raw_UUID"]) if isinstance(row["raw_UUID"], list) else str(row["raw_UUID"])
-                    }
-                )
+        filter_model = FilterModel.from_human_filter({"contains": 
+                                                      {"status": "ready", 
+                                                       "job_type": "provider"}
+                                                      })
+        
+        
+        df = WorkerJobs_Out.fetch(filter_model=filter_model)
 
-            )
-            self.jobs.append(job)
-        logging.debug3(f"🧱 Built {len(self.jobs)} job objects")
+        df = df.iloc[:30]
+        total_raw_jobs = len(df)
+        self.controller.update_item_count(total_raw_jobs)
+        logging.debug2(f"📊 {total_raw_jobs} provider job records loaded from DB")
+
+
+        retry_ready = 0
+        retry_delayed = 0
+        total_parsed = 0
+
+
+
+
+
+        for row in df.to_dict(orient="records"):
+            try:
+                job = ProviderJob.model_validate(row["payload"])
+                total_parsed += 1
+                job.job_uuid = row["job_uuid"]
+                if job.next_retry <= datetime.now(timezone.utc):
+                    self.jobs.append(job)
+                    retry_ready += 1
+                else:
+                    retry_delayed += 1
+            except Exception as e:
+                logging.error(f"❌ Failed to parse ProviderJob: {e}", exc_info=True)
+
+        for job_no, job in enumerate(self.jobs):
+            job.input.job_No = job_no
+
+
+        logging.info("📦 Job Loading Summary")
+        logging.info(f"  • Total jobs fetched from DB:        {total_raw_jobs}")
+        logging.info(f"  • Successfully parsed ProviderJobs: {total_parsed}")
+        logging.info(f"  • Jobs ready to run (retry OK):     {retry_ready}")
+        logging.info(f"  • Skipped (next_retry in future):   {retry_delayed}")
+        logging.debug3(f"🧱 Built {len(self.jobs)} ProviderJob objects")
+
+
+
+
 
 
     def _run_pipeline(self, jobs: List[WoodJob], num_loader_workers=6, max_queue_size=25, error_threshold=3):
@@ -283,10 +258,10 @@ class TA25_0_CreateWoodHDF(TaskBase):
                     try:
                         output_queue.put(job, timeout=2)
                     except Full:
-                        logging.warning(f"[Loader-{worker_id}] ⏳ Output queue full — job #{job.jobNo} blocked >2s")
-                    logging.debug1(f"[Loader-{worker_id}] Job #{job.jobNo} prepared — shape {image_data.shape}, type {filter_type}")
-                    if job.jobNo % 10 == 0:
-                        logging.debug3(f"[Loader-{worker_id}] Job #{job.jobNo} prepared — shape {image_data.shape}, type {filter_type}")
+                        logging.warning(f"[Loader-{worker_id}] ⏳ Output queue full — job #{job.input.job_No} blocked >2s")
+                    logging.debug1(f"[Loader-{worker_id}] Job #{job.input.job_No} prepared — shape {image_data.shape}, type {filter_type}")
+                    if job.input.job_No % 10 == 0:
+                        logging.debug3(f"[Loader-{worker_id}] Job #{job.input.job_No} prepared — shape {image_data.shape}, type {filter_type}")
                             
                 
                 except Exception as e:
@@ -297,13 +272,15 @@ class TA25_0_CreateWoodHDF(TaskBase):
                     input_queue.task_done()
 
 
+
         def storer():
             handler = SWMR_HDF5Handler(self.instructions["HDF5_file_path"])
             logging.debug2("[Storer] Started")
+            last_job = -1
             while True:
                 job = output_queue.get()
                 if job is not None:
-                    last_job = job.jobNo
+                    last_job = job.input.job_No
                 if job is None:
                     logging.debug2(f"[Storer] Exiting, last job was #{last_job}")
                     output_queue.task_done()
@@ -313,13 +290,33 @@ class TA25_0_CreateWoodHDF(TaskBase):
                                     **job.attrs.Level4, **job.attrs.Level5, **job.attrs.Level6,
                                     **job.attrs.Level7, **job.attrs.dataSet_attrs}
                     handler.store_image(dataset_path=job.input.dest_rel_path, image_data=job.input.image_data, attributes=merged_attrs)
-                    logging.debug1(f"[Storer] Stored job #{job.jobNo} → {job.input.dest_rel_path}")
-                    if job.jobNo % 10 == 0:
-                        logging.debug3(f"[Storer] Job #{job.jobNo} stored → {job.input.dest_rel_path}")
+                    logging.debug1(f"[Storer] Stored job #{job.input.job_No} → {job.input.dest_rel_path}")
+                    if job.input.job_No % 10 == 0:
+                        logging.debug3(f"[Storer] Job #{job.input.job_No} stored → {job.input.dest_rel_path}")
+                
+                    # ✅ Mark job done in DB
+                    job.status = JobStatus.DONE
+                    job.updated = datetime.now(timezone.utc)
+                    
+                    job.input.image_data = None
+                    job.update_db(fields_to_update=["status"])
+
+
+
+
                 except Exception as e:
                     logging.error(f"[Storer] Error: {e}", exc_info=True)
+                    job.register_failure(str(e))
+                    if job.attempts >= 5:
+                        job.status = JobStatus.FAILED
+                    
+                    job.input.image_data = None
+                    job.update_db(fields_to_update=["status, attempts", "next_retry"])
+
+
                     with error_counter["lock"]:
                         error_counter["count"] += 1
+
                 finally:
                     output_queue.task_done()
 
@@ -360,9 +357,6 @@ class TA25_0_CreateWoodHDF(TaskBase):
         logging.debug5(f"🖼️  Total Images: {pipeline_stats['total_images']}")
         logging.debug5(f"✂️  Total Crops: {pipeline_stats['total_crops']}")
         logging.debug5("\n" + summary_df.to_string(index=False))
-
-
-
 
 
         logging.info("🎉 Image processing pipeline completed")

@@ -1,5 +1,3 @@
-# app/db/base.py
-
 import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
@@ -12,52 +10,6 @@ import logging
 _engine_cache = {}  # Module-level cache, To allow to reuse engine connections
 
 load_dotenv()
-
-def create_all_tables():
-    
-    #progress
-    from app.utils.SQL.models.progress.orm.ProfileArchive import ProfileArchive
-    from app.utils.SQL.models.progress.orm.ProgressArchive import ProgressArchive
-    
-    # raw
-    from app.utils.SQL.models.raw.orm.PrimaryDataRaw import PrimaryDataRaw
-    
-    # production
-    from app.utils.SQL.models.production.orm.DS09 import DS09
-    from app.utils.SQL.models.production.orm.DS40 import DS40
-    from app.utils.SQL.models.production.orm.DS12 import DS12
-    from app.utils.SQL.models.production.orm.WoodTableA import WoodTableA
-    from app.utils.SQL.models.production.orm.WoodTableB import WoodTableB
-    from app.utils.SQL.models.production.orm.WoodMaster import WoodMaster
-    from app.utils.SQL.models.production.orm.DoEArchive import DoEArchive
-    from app.utils.SQL.models.production.orm.ModellingResults import ModellingResults
-
-    # temp
-    from app.utils.SQL.models.temp.orm.PrimaryDataJobs import PrimaryDataJobs
-    from app.utils.SQL.models.temp.orm.DoEJobs import DoEJobs
-
-    grouped_models = {
-        "progress": [ProfileArchive, ProgressArchive],
-        "raw": [PrimaryDataRaw],
-        "production": [WoodMaster, WoodTableA, WoodTableB, DoEArchive, DS09, DS12, DS40, ModellingResults],
-        "temp" : [PrimaryDataJobs, DoEJobs],
-    }
-
-
-    for db_key, model_list in grouped_models.items():
-        try:
-            db = DBEngine(db_key)
-            engine = db.get_engine()
-            for model in model_list:
-                model.__table__.create(bind=engine, checkfirst=True)
-                logging.debug3(f"✅ Created table '{model.__tablename__}' in {db_key}")
-
-        except Exception as e:
-            logging.warning(f"❌ Failed to create tables for {db_key}: {e}")
-
-
-
-
 
 class DBEngine:
     def __init__(self, db_key: str):
@@ -79,6 +31,7 @@ class DBEngine:
         
         self.engine = _engine_cache[db_key]
         self.SessionLocal = sessionmaker(bind=self.engine)
+
 
     def get_session(self):
         """Creates a new SQLAlchemy session bound to the engine."""
@@ -105,6 +58,7 @@ class DBEngine:
 
         return f"postgresql://{user}:{pwd}@{host}:{port}/{db}"
     
+
 
 
 
