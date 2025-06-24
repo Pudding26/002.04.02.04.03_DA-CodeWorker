@@ -1,0 +1,6 @@
+BIN01:
+  name: density_bin
+  description: groups density related cols together
+  cols:
+    - dummy_col_01
+    - dummy_col_02

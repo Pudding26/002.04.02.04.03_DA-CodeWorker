@@ -1,0 +1,29 @@
+
+# 🔍 Apply `IN` logic — default is AND unless overridden
+"contains": {
+    "column_name_1": ["value1", "value2"],  # Interpreted as AND by default
+
+    "column_name_2": {
+        "or": [["a", "b"], ["c"]]           # OR logic: (col BETWEEN a AND b) OR (col = c)
+    },
+
+    "column_name_3": {
+        "and": ["x", "y", "z"]              # Explicit AND logic
+    }
+},
+
+# ❌ Apply NOT IN logic — works the same as "contains"
+"notcontains": {
+    "column_name_4": ["foo", "bar"],        # Default AND (negated)
+
+    "column_name_5": {
+        "or": [["m", "n"], ["o"]]           # Negated OR range logic
+    }
+},
+
+# 📊 Define which columns interpret list-like values as ranges
+"is_range": ["column_name_2", "column_name_5"],
+
+# ⚙️ Optional flags — choose one
+"all_AND": True,   # default behavior: use AND logic globally for bare lists
+# "all_OR": True,  # uncomment instead if you prefer global OR behavior

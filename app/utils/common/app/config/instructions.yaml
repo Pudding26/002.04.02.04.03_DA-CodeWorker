@@ -1,0 +1,234 @@
+
+
+tasks:
+  #TA01_Setup:
+  #  TA01_A_CreateDatabases:
+  #    taskName: TA01_A_CreateDatabases
+  #    prd_db: "prd"
+  #    source_db: "source"
+  #    raw_db: "raw"
+
+  TA05_PassiveRsyncWatcher:
+    TA05_0_PassiveRsyncWatcher:
+      taskName: TA05_0_PassiveRsyncWatcher
+    TA05_A_SingleRsyncWorker:
+      taskName: TA05_A_SingleRsyncWorker
+
+
+  TA11_DataImport:
+    TA11_0_DataImportWrapper:
+      taskName: TA11_0_DataImportWrapper
+      tasks_T1:
+        - TA11_A_Import_DS01
+        - TA11_B_Import_DS04
+        - TA11_C_Import_DS07
+        #- TA11_D_Import_DS11
+        - TA11_E_Import_SecondaryData
+
+
+    TA11_A_Import_DS01:
+      TaskName : "TA11_A_Import_DS01"
+      sourceFile_path : "data/sourceData/primary/DS01"
+      sourceFile_path_debug : "data/sourceData/primary/DS01"
+      destFile_path : "data/rawData/primary/DS01.hdf5"
+      DS_Name : "DS01"
+      citeKey : "dasilva_2017"
+      batch_size : 10
+      sourceNo : "DS01"
+
+
+    TA11_B_Import_DS04:
+      TaskName : "TA11_B_Import_DS04"
+      sourceFile_path : "data/sourceData/primary/DS04/DS04.h5"
+      sourceFile_path_debug : "data/sourceData/primary/DS04"
+      destFile_path : "data/rawData/primary/DS04.hdf5"
+      DS_Name : "DS04"
+      citeKey : "sugiyama_2020"
+      chunk_size : 512
+      sourceNo : "DS04"
+      progress_update_cylce : 5
+      
+      
+    TA11_C_Import_DS07:
+      TaskName: "TA11_C_Import_DS07"
+      sourceFile_path: "data/sourceData/primary/DS07"
+      sourceFile_path_debug: "data/sourceData/primary/DS07"
+      destFile_path: "data/rawData/primary/DS07.hdf5"
+      DS_Name: "DS07"
+      citeKey: "martins_2012"
+      batch_size: 10
+      sourceNo: "DS07"
+      progress_update_cylce : 5
+
+    TA11_D_Import_DS11:
+    TA11_E_Import_SecondaryData:
+      TaskName: "TA11_E_Import_SecondaryData"
+      sourceFile_path: "data/sourceData/secondary"
+      dest_db_name: raw
+
+
+  TA12_DataTransferPrimary:
+    TA12_0_DataTransferPrimaryWrapper:
+      taskName: TA12_0_DataTransferPrimaryWrapper
+      tasks_T1:
+        - TA12_A_Transfer_DS01
+        - TA12_B_Transfer_DS04
+        - TA12_C_Transfer_DS07
+        - TA12_D_Transfer_DS11
+      tasks_T2:
+        - TA12_E_ConcatPrimaryDataRaw
+        
+      
+
+
+    
+    TA12_A_Transfer_DS01:
+      taskName: TA12_A_Transfer_DS01
+      path_DataRaw: data/rawData/primary/DS01.hdf5
+      dest_db_name: raw
+      dest_table_name: DS01
+      path_gen_manual_col_mapper: app/config/mapper/TA12_DataTransfer/TA12_manualColMapper.yaml
+    
+    TA12_B_Transfer_DS04:
+      taskName: TA12_B_Transfer_DS04
+      path_DataRaw: data/rawData/primary/DS04.hdf5
+      dest_db_name: raw
+      dest_table_name: DS04
+      path_gen_manual_col_mapper: app/config/mapper/TA12_DataTransfer/TA12_manualColMapper.yaml
+      path_gen_col_rename_mapper: app/config/mapper/TA12_DataTransfer/TA12_DS04_colRenameMapper.yaml
+
+    TA12_C_Transfer_DS07:
+      taskName: TA12_C_Transfer_DS07
+      path_DataRaw: data/rawData/primary/DS07.hdf5
+      dest_db_name: raw
+      dest_table_name: DS07
+      path_gen_manual_col_mapper: app/config/mapper/TA12_DataTransfer/TA12_manualColMapper.yaml
+      path_gen_col_rename_mapper: app/config/mapper/TA12_DataTransfer/TA12_DS07_colRenameMapper.yaml
+    
+    TA12_D_Transfer_DS11:
+      taskName: TA12_D_Transfer_DS11
+      path_DataRaw: data/sourceData/primary/DS11/DS11.db
+      src_table_name: iwimages
+      dest_db_name: raw
+      dest_table_name: DS11
+      path_gen_manual_col_mapper: app/config/mapper/TA12_DataTransfer/TA12_manualColMapper.yaml
+      path_gen_col_rename_mapper: app/config/mapper/TA12_DataTransfer/TA12_DS11_colRenameMapper.yaml
+      path_value_mapper: app/config/mapper/TA12_DataTransfer/TA12_valueMapper.yaml
+
+    TA12_E_ConcatPrimaryDataRaw:
+      taskName: TA12_E_ConcatPrimaryDataRaw
+      src_db_name: raw
+      src_table_names: 
+        - DS01
+        - DS04
+        - DS07
+        - DS11
+      dest_db_name: raw
+      dest_table_name: primaryDataRaw
+
+  TA13_Transfer_SecondaryData:
+    TA13_0_TransferSecondaryDataWrapper:
+      taskName: TA13_0_TransferSecondaryDataWrapper
+      instruction_path: app/config/instructions.yaml
+      api_base_url: http://localhost:8000
+      task_dir_path: app/tasks/TA13_DataTransferSecondary  # Adjust if your subtasks live elsewhere
+
+
+    TA13_A_DataTransfer_DS09:
+      taskName: TA13_A_DataTransfer_DS09
+      table_name: "DS09"
+      src_db_name: "raw"
+      dest_db_name: "production"
+      path_col_name_mapper: app/config/mapper/TA13_TransferSecondaryData/TA13_colRenameMapper.yaml
+
+    TA13_B_DataTransfer_DS40:
+      taskName: TA13_B_DataTransfer_DS40
+      table_name: "DS40"
+      src_db_name: "raw"
+      dest_db_name: "production"
+
+    TA13_C_DataTransfer_DS12:
+      taskName: TA13_C_DataTransfer_DS12
+      table_name: "DS12"
+      src_db_name: "raw"
+      dest_db_name: "production"
+
+
+
+
+  TA20_CreateWoodTable:
+    TA20_0_CreateWoodTableWrapper:
+      taskName: TA20_0_CreateWoodTableWrapper
+      tasks_T1:
+        - TA20_A_CreateWoodTableA
+      tasks_T2:
+        - TA20_B_CreateWoodTableB
+    
+    
+    TA20_A_CreateWoodTableA:
+      taskName: TA20_A_CreateWoodTableA
+      src_db_key: "production"
+      src_table_names:
+        - "primaryDataRaw"
+        - "DS09"
+        - "DS12"
+        - "DS40"
+
+    TA20_B_CreateWoodTableB:
+      taskName: TA20_B_CreateWoodTableB
+
+
+    
+
+  TA23_CreateWoodMaster:
+    TA23_0_CreateWoodMaster:
+      taskName: TA23_0_CreateWoodMaster
+      HDF5_file_path: "data/productionData/primaryData.hdf5"
+      woodTypeMapper_path: "app/config/mapper/TA23_CreateWoodmaster/TA23_0_woodTypeMapper.yaml"
+      woodTableSource: WoodTableA
+
+
+  TA25_CreateWoodHDF:
+    TA25_0_CreateWoodHDF:
+      debug : True
+      taskName: TA25_0_CreateWoodHDF
+      src_db_key: "production"
+      HDF5_file_path: "data/productionData/primaryData.hdf5"
+      debug_sample_rate: 20
+  
+  TA27_DesignOfExperiments:
+    TA27_0_DoEWrapper:
+      taskName: TA27_0_DoEWrapper
+      dest_db_path_1: source
+      dest_db_table_name: DoE_table
+      doe_yaml_path: app/config/DoE/DesignOfExperiments.yaml
+      job_template_path: app/config/templates/DoE_job_template.yaml
+      output_jobs_yaml: path/to/DoE_jobs_expanded.yaml
+
+  TA29_WorkerJobBuilder:
+    TA29_A_SegmentationJobBuilder:
+      taskName: TA29_A_SegmentationJobBuilder
+      segmentationFilter_config_path: app/config/segmentationFilter_config.yaml
+      DoE_job_template_path: app/config/templates/DoE_job_template.yaml
+
+
+
+
+  TA35_BackendOrchestrator:
+    TA35_0_BackendOrchestrator:
+      taskName: TA35_0_BackendOrchestrator
+      api_base_url: http://localhost:8000
+      
+      
+      do_import: True
+      do_transfer: True
+      do_update_hdf5: True
+      #tasks_T1:
+      #  - TA11_0_DataImportWrapper
+      #tasks_T2:
+      #  - TA12_0_DataTransferPrimaryWrapper
+      #  - TA13_0_TransferSecondaryDataWrapper
+      #tasks_T3:
+      
+
+

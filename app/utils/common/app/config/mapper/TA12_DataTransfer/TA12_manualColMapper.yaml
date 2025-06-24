@@ -1,0 +1,124 @@
+TA12_A_Transfer_DS01:
+  sourceNo: "DS01"
+  view: "TS"
+  microscopicTechnic: "light microscopy"
+  lens: 25
+  #bitDepth: "8-bit"
+  #colorSpace: "RGB"
+  #colorDepth: "24-bit"
+  #DPI: "unknown"
+  institution: "University of Sao Paulo, USP"
+  contributor: "Rosa da Silva"
+  origin: "unknown"
+  digitizedDate: "unknown"
+  #area_x_mm: "unknown"
+  #area_y_mm: "unknown"
+  #pixelSize_um_per_pixel: "unknown"
+  #numericalAperature_NA: "unknown"
+  GPS_Alt : "unknown"
+  GPS_Lat : "unknown"
+  GPS_Long : "unknown"
+  sourceStoredLocally: 1
+  #family : todo
+  #japName: "unknown"
+  institutionCode: "RMCA"
+  samplingPoint: "unknown"
+  #totalNumberShots: "todo"
+  #woodType: "todo"
+  #sourceFilePath_abs: "todo"
+
+
+
+
+TA12_B_Transfer_DS04:
+  view: "TS"
+  lens: 2
+  citeKey: "sugyiama_2020"
+  microscopicTechnic: "light microscopy"
+  #bitDepth: "8-bit"
+  #colorSpace: "grey scale"
+  #colorDepth: "grey scale"
+  DPI: "todo"
+  #totalNumberShots: "todo"
+  institution: "Kyoto University; Xylarium"
+  contributor: "unknown"
+  origin: "unknown"
+  digitizedDate: "unknown"
+  area_x_mm: 2.7
+  area_y_mm: 2.7
+  #pixel_x: "todo"
+  #pixel_y: "todo"
+  pixelSize_um_per_pixel: 2.96
+  numericalAperature_NA: 0.08
+  sourceNo: "DS04"
+  sourceStoredLocally: 1
+  institutionCode: "XDD"
+  #sourceFilePath_rel: "todo"
+  #sourceFilePath_abs: "todo"
+  woodType: "Hardwood"
+
+
+TA12_C_Transfer_DS07:
+  view: "TS"
+  microscopicTechnic: "light microscopy"
+  lens: 25
+  #bitDepth: "8-bit"
+  #colorSpace: "RGB"
+  #colorDepth: "24-bit"
+  DPI: "unknown"
+  totalNumberShots: 1
+  institution: "UPFR"
+  contributor: "unknown"
+  #origin: "unknown"
+  digitizedDate: "unknown"
+  #area_x_mm: "unknown"
+  #area_y_mm: "unknown"
+  #pixel_x: 1024
+  #pixel_y: 768
+  #pixelSize_um_per_pixel: "unknown"
+  #numericalAperature_NA: "unknown"
+  GPS_Alt : "unknown"
+  GPS_Lat : "unknown"
+  GPS_Long : "unknown"
+  sourceNo: "DS07"
+  sourceStoredLocally: 1
+  #family : todo
+  #japName: "unknown"
+  institutionCode: "UPFR"
+  samplingPoint: "unknown"
+  #sourceFilePath_abs: "todo"
+
+
+
+
+TA12_D_Transfer_DS11:
+  citeKey: "unknown"
+  sourceNo: "DS11"
+  sourceStoredLocally: 0
+  GPS_Alt : "unknown"
+  GPS_Lat : "unknown"
+  GPS_Long : "unknown"
+  #microscopicTechnic: "todo"
+  #pixelSize_um_per_pixel: "unclear"
+  #pixel_x: "todo"
+  #pixel_y: "todo"
+  area_x_mm: "unclear"
+  area_y_mm: "unclear"
+  #bitDepth: "todo"
+  #colorSpace: "todo"
+  #colorDepth: "todo"
+  #japName: "unknown"
+  numericalAperature_NA: "unknown"
+  #origin: "unknown"
+  #samplingPoint: "unknown"
+  #sourceFilePath_rel: "todo"
+  #sourceFilePath_abs: "todo"
+  #totalNumberShots: "todo"
+
+
+
+  
+
+
+
+  

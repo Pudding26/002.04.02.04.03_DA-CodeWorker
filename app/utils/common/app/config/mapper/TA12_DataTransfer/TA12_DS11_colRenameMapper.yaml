@@ -1,0 +1,19 @@
+col_names:
+   'id' : "source_UUID"
+   'specimen' : "specimenNo_old"
+   'name' : "name_drop"
+   'family' : "family"
+   'species': 'species'
+   'view': 'todo_view'
+   'digitizedDate': 'digitizedDate'
+   'resolution': 'DPI'
+   'commonNames': "engName_old"
+   'filename' : 'filename_old'
+   'institutionCode' : 'institutionCode'
+   "_version_" :    "version_old"
+   "typeofwood" : "woodType"
+   "source" : 'source_drop'
+   "bitdepth" : 'todo_bitdepth_old'
+   'lens' : "todo_lens" 
+   'contributor' : 'todo_contributor'
+   'institution' : 'todo_institution'
