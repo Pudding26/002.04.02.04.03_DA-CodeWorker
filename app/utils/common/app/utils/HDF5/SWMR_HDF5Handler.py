@@ -60,11 +60,12 @@ class SWMR_HDF5Handler:
     ):
         attributes = attributes or {}
         logging.debug1(f"[SWMR] Writing to {self.file_path} [{dataset_path}]")
-
+        sleep_time = 0
         # retry-with-back-off helps when another writer has the lock
         for attempt in range(5):
             try:
                 with h5py.File(self.file_path, "a", libver="latest") as f:
+                    f.swmr_mode = True
                     self.handle_dataset(
                         hdf5_file=f,
                         dataset_name=dataset_path,
@@ -73,10 +74,11 @@ class SWMR_HDF5Handler:
                         attribute_process=attribute_process,
                     )
                     f.flush()           # <-- important for SWMR readers
-                break                   # success → leave retry loop
+                return sleep_time                   # success → leave retry loop
             except OSError as e:
                 if getattr(e, "errno", None) == 11 and attempt < 4:
-                    time.sleep(0.25)   # file is temporarily locked
+                    time.sleep(attempt * attempt)   # file is temporarily locked
+                    sleep_time = sleep_time + attempt * attempt
                     continue
                 logging.error(f"[SWMR] Error storing image: {e}", exc_info=True)
                 raise

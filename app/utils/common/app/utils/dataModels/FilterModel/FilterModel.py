@@ -113,3 +113,106 @@ class FilterModel(BaseModel):
     def has_conditions(self) -> bool:
         """Check whether any group contains conditions."""
         return any(g.conditions for g in self.groups)
+    
+    @staticmethod
+    def from_dataframe(
+        df: pd.DataFrame,
+        *,
+        include_cols: list[str],
+        is_range_cols: list[str] = None,
+        is_max: list[str] = None,
+        is_min: list[str] = None,
+        border_rule: dict[str, Border] = None,
+        global_logic: Logic = Logic.AND,
+        job_id_field: str = "job_uuid"
+    ) -> list["FilterModel"]:
+        """
+        Convert an entire DataFrame of job specs into a list of FilterModels.
+
+        Parameters:
+            df: DataFrame containing filter fields
+            include_cols: Columns to include as filters
+            is_range_cols: Columns treated as BETWEEN
+            is_max: Columns treated as <=
+            is_min: Columns treated as >=
+            border_rule: Dict of borders (INCLUDE/EXCLUDE) for range filters
+            global_logic: AND/OR logic for combining filter groups
+            job_id_field: Column name to assign as job_id in FilterModel
+
+        Returns:
+            List of FilterModel instances, one per row
+        """
+        return [
+            FilterModel.from_row(
+                row=row,
+                include_cols=include_cols,
+                range_cols=is_range_cols or [],
+                min_cols=is_min or [],
+                max_cols=is_max or [],
+                border_rule={k: Border(border_rule[k]) for k in border_rule} if border_rule else {},
+                global_logic=global_logic,
+                job_id_field=job_id_field
+            )
+            for _, row in df.iterrows()
+        ]
+
+
+    @staticmethod
+    def from_human_filter(human_filter: dict) -> FilterModel:
+        """
+        Construct a FilterModel from a human-friendly filter dictionary.
+        """
+        contains = human_filter.get("contains", {})
+        notcontains = human_filter.get("notcontains", {})
+        is_range = set(human_filter.get("is_range", []))
+        global_logic = Logic.OR if human_filter.get("all_OR") else Logic.AND
+
+        def parse_conditions(section: dict, negated: bool = False) -> list[Condition]:
+            conds = []
+            for col, val in section.items():
+                border = Border.INCLUDE if col in is_range else None
+
+                # Normalize val to expected format
+                if isinstance(val, str) or not isinstance(val, (list, dict)):
+                    val = [val]
+
+                if isinstance(val, dict):
+                    if "or" in val:
+                        for or_item in val["or"]:
+                            if isinstance(or_item, list) and len(or_item) == 2 and col in is_range:
+                                conds.append(Condition(
+                                    column=col,
+                                    op=Op.NOT_BETWEEN if negated else Op.BETWEEN,
+                                    value=[tuple(or_item)],
+                                    border=border
+                                ))
+                            else:
+                                conds.append(Condition(
+                                    column=col,
+                                    op=Op.NOT_IN if negated else Op.IN_,
+                                    value=or_item
+                                ))
+                    elif "and" in val:
+                        conds.extend([
+                            Condition(
+                                column=col,
+                                op=Op.NOT_IN if negated else Op.IN_,
+                                value=[v]
+                            ) for v in val["and"]
+                        ])
+                else:
+                    # Simple value list
+                    for v in val:
+                        conds.append(Condition(
+                            column=col,
+                            op=Op.NOT_IN if negated else Op.IN_,
+                            value=[v]
+                        ))
+
+            return conds
+
+        conditions = parse_conditions(contains, negated=False) + parse_conditions(notcontains, negated=True)
+        group = ConditionGroup(logic=global_logic, conditions=conditions)
+        return FilterModel(groups=[group], global_logic=Logic.AND)
+
+

@@ -12,6 +12,9 @@ from typing import Any, Dict, List, Tuple, Type
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, class_mapper
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
 
 __all__ = ["_bulk_save_objects", "BulkInsertError"]
 
@@ -128,9 +131,21 @@ def _bulk_save_objects(
                 _sanitize_exc(exc),
             )
 
+
         # ----------------------------------------------------------
         # Phase 2 – Row‑by‑row fallback for this chunk
         # ----------------------------------------------------------
+        
+        # Dynamically recreate engine with echo=True
+        #original_url = str(session.get_bind().url)
+        #debug_engine = create_engine(original_url, echo=True)
+        #
+        #logging.basicConfig()
+        #logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+        #
+        #DebugSession = sessionmaker(bind=debug_engine)
+        #session = DebugSession()
+        
         row_failures_in_chunk = 0
 
         for offset, row in enumerate(chunk):

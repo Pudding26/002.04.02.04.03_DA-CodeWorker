@@ -45,7 +45,7 @@ class WoodMaster(orm_BaseModel):
     contributor = Column(String(length=255))
     digitizedDate = Column(DateTime)
     sourceNo = Column(String(length=255))
-    raw_UUID = Column(String(length=255), unique=True, nullable=False)
+    raw_UUID = Column(String(length=255), nullable=False)
 
     GPS_Alt = Column(Float)
     GPS_Lat = Column(Float)
@@ -53,7 +53,6 @@ class WoodMaster(orm_BaseModel):
     samplingPoint = Column(String(length=255))
 
 
-    hdf5_dataset_path = Column(String(length=255))
     path = Column(String(length=255))  # ✅ newly added
     specimenID = Column(String(length=255))
     sourceID = Column(String(length=255))

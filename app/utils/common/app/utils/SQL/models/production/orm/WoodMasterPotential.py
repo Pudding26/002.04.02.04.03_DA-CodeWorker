@@ -4,12 +4,16 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.utils.SQL.models.orm_BaseModel import orm_BaseModel
 
-class PrimaryDataJobs(orm_BaseModel):
-    __tablename__ = "primaryDataJobs"
+
+
+class WoodMasterPotential(orm_BaseModel):
+    __tablename__ = "WoodMasterPotential"
 
 
 
     sampleID = Column(String, primary_key=True)
+    #sampleID_status = Column(String) 
+    transfer_trys = Column(Integer)
 
     woodType = Column(String)
     species = Column(String)
@@ -58,7 +62,7 @@ class PrimaryDataJobs(orm_BaseModel):
     GPS_Long = Column(Float)
     
     sourceFilePath_rel = Column(JSONB)
-    hdf5_dataset_path = Column(String)
+    hdf5_dataset_path = Column(String)  # The path to the later dataset, excluding the stackID
     #stackID = Column(String) -> not possible on this level
     specimenID = Column(String)
     sourceID = Column(String)

@@ -1,0 +1,91 @@
+FF01:
+  name: "CLAHE + Gaussian"
+  description: "Preprocessing using CLAHE followed by Gaussian blur; Otsu segmentation."
+
+  preprocessing:
+    gray_channel: "Luminance"
+
+    contrast:
+      method: "CLAHE"
+      clahe:
+        clip_limit: 2.0
+        tile_size: 8
+      gamma: 1.0
+      manual:
+        contrast: 1.0
+        brightness: 0
+
+    noise:
+      method: "Gaussian"
+      gaussian:
+        ksize: 5
+      median:
+        ksize: 5
+      bilateral:
+        d: 9
+        sigma_color: 75
+        sigma_space: 75
+
+    normalization:
+      method: "MinMax"
+
+  segmentation:
+    threshold:
+      method: "Otsu"
+      adaptive:
+        block_size: 11
+        C: 2
+      manual:
+        value: 127
+
+    edge:
+      method: "None"
+      canny:
+        low: 100
+        high: 200
+      sobel:
+        dx: 1
+        dy: 0
+        ksize: 3
+
+FF02:
+  name: "Gamma + Canny"
+  description: "Gamma correction and Canny edge detection with manual thresholding."
+
+  preprocessing:
+    gray_channel: "Red"
+
+    contrast:
+      method: "Gamma"
+      gamma: 1.8
+      clahe:
+        clip_limit: 2.0
+        tile_size: 8
+      manual:
+        contrast: 1.0
+        brightness: 0
+
+    noise:
+      method: "None"
+
+    normalization:
+      method: "ZScore"
+
+  segmentation:
+    threshold:
+      method: "Manual"
+      manual:
+        value: 140
+      adaptive:
+        block_size: 11
+        C: 2
+
+    edge:
+      method: "Canny"
+      canny:
+        low: 50
+        high: 150
+      sobel:
+        dx: 1
+        dy: 0
+        ksize: 3
