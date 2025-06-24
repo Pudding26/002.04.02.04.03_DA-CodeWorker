@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run: Custom Logging",
+      "type": "python",
+      "request": "launch",
+      "program": "run.py",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.tmp
+.vscode/
+.git/
+venv_002.04.02.04.02_DA-CodeOrchestrator/
+data/productionData/

@@ -1,0 +1,7 @@
+2ndNo:
+  name: "dummy"
+  description: "combines parameter together that are moisture related"
+  cols:
+    - k_wa
+    - k_inh
+    - density

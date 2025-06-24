@@ -1,0 +1,221 @@
+@startuml
+
+skinparam class {
+ArrowColor SeaGreen
+BorderColor<<Table>>  OliveDrab
+BackgroundColor<<Table>>  Linen
+BackgroundColor<<API>> Wheat
+BorderColor<<API>> Tomato
+BackgroundColor<<Interface>> Green
+BorderColor<<Interface>> Tomato
+}
+
+
+
+
+
+
+!define primary_key(x) <b><color:#b8861b><&key></color> x</b>
+!define foreign_key(x) <color:#aaaaaa><&key></color> x
+!define column(x) <color:#000000></color> x
+
+!define UserInput(x) <color:#000000><&person></color> x
+!define BackendInput(x) <color:#000000></color> x
+!define UserOutput(x) <color:#000000><&external-link></color> x
+
+!define table(x) entity x << (T, white) >>
+!define database(x) entity x << (T, SpringGreen) >>
+!define API(x) entity x << (A, SkyBlue) >>
+!define Interface(x) entity x << (I, SkyBlue) >>
+!define List(x) entity x << (L, SkyBlue) >>
+
+database (Data1_hdf5) {
+  
+} 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+table( primary_data_overview )  <<table>>{
+  primary_key( UUID ): TEXT
+  ---
+  foreign_key(source-UUID): TEXT
+  ---
+  foreign_key( specimenNo ) TEXT
+  foreign_key( shotID-0 ) TEXT
+  foreign_key( shotID-1 ) TEXT
+  foreign_key( sourceFilePath_rel ) TEXT
+  foreign_key( sourceFilePath_abs ) TEXT
+  foreign_key( desfilePath_rel ) TEXT
+  foreign_key( desfilePath_abs ) TEXT
+  foreign_key( StoredLocally ) TEXT
+  ---
+  column(shot_No) int
+  ---
+  column( family ): TEXT
+  column( genus ): TEXT
+  column( order ): TEXT
+  column( species ): TEXT
+  column( engName_old ): TEXT
+  ---
+  column( microscopicTechnic ): TEXT
+  column( view ): TEXT
+  column( lens ): TEXT
+  ---
+  column( bitDepth ): TEXT
+  column( colorDepth ): TEXT
+  column( colorSpace ): TEXT
+  column( resolution ): TEXT
+  column( DPI ): TEXT
+  column( area_x [mm] ): TEXT
+  column( area_y [mm] ): TEXT
+  column( pixelSize [µm/pixel] ): TEXT
+  column( numericalAperature ): TEXT
+  column( totalNumberShots ): TEXT
+  ---
+  column( sourceID ): TEXT
+  column( sourceNo ): TEXT
+  column( institution ): TEXT
+  column( contributor ): TEXT
+  column( origin ): TEXT
+  column( digitizedDate ): TEXT
+  column( citeKey ): TEXT
+  
+  ---
+  column( GPS_alt ): TEXT
+  column( GPS_Lat ): TEXT
+  column( GPS_Long ): TEXT
+  column( samplingPoint ): TEXT
+  ---
+  column( IFAW_ID ): TEXT
+  column( engName ): TEXT
+  column( deName ): TEXT
+  column( frName ): TEXT
+  column( japName ): TEXT
+  column( matchScore ): TEXT
+  column( woodType ): TEXT
+
+  ---
+  column( contributor_old ): INT
+  column( institution_old ): INT
+  column( lens_old ): INT
+  column( species_old ): INT
+  column( specimenNo_old ): INT
+}
+
+table( SegmentationData_shot )  <<Table>>{
+  primary_key( shotID_1 ): TEXT
+  
+  -- Visualization --
+  foreign_key( shotNo ): INT
+  foreign_key( order ): INT
+  foreign_key( family ): TEXT  
+  foreign_key( genus ): TEXT
+  foreign_key( species ): TEXT
+  foreign_key( engName ): TEXT
+  foreign_key( deName ): TEXT
+
+  -- Geometric --
+  column( Area ): FLOAT
+  column( Perimeter ): FLOAT
+  column( Compactness ): FLOAT
+  column( Aspect_Ratio ): FLOAT
+  column( Diameter_Min ): FLOAT
+  column( Diameter_Mean ): FLOAT
+  column( Diameter_Max ): FLOAT
+  column( Extent ): FLOAT
+  column( Eccentricity ): FLOAT
+  column( Elongation ): FLOAT
+
+  -- Boundary --
+  column( Convex_Hull_Area ): FLOAT
+  column( Convexity ): FLOAT
+  column( Convexity_Defects ): FLOAT
+  column( Fractal_Dimension ): FLOAT
+
+  -- Statistical --
+  column( Wadell_Roundness ): FLOAT
+  column( Circularity ): FLOAT
+  column( Solidity ): FLOAT
+  column( Hu_Moments ): FLOAT
+  column( Radial_Distance_Min ): FLOAT
+  column( Radial_Distance_Mean ): FLOAT
+  column( Radial_Distance_Max ): FLOAT
+
+  -- Orientation --
+  column( Orientation_Angle ): FLOAT
+  column( PCA_Direction ): FLOAT
+
+  -- Contextual --
+  column( Centroid_X ): FLOAT
+  column( Centroid_Y ): FLOAT
+  column( Distance_to_Edge ): FLOAT
+  column( Neighbor_Count ): INT
+  column( Local_Density ): FLOAT
+
+  -- Region-based --
+  column( Texture_Mean ): FLOAT
+  column( Texture_StdDev ): FLOAT
+  column( Graylevel_Mean ): FLOAT
+}
+
+
+
+table( WoodTable_X )  <<Table>>{
+  primary_key( species ): TEXT
+  ---
+  foreign_key( IFAW_ID ): INT
+  ---
+  column( woodType ): TEXT
+  column( family ): TEXT
+  column( genus ): TEXT
+  column( engName ): TEXT
+  column( deName ): TEXT
+  }
+
+
+table( DesignOfExperiments )  <<Table>>{
+  primary_key( DoE_UUID ): TEXT
+  ---
+  foreign_key( a ): INT
+  ---
+  column( order ): TEXT
+  column( family ): TEXT
+  column( genus ): TEXT
+  column( engName ): TEXT
+  column( deName ): TEXT
+  ---
+  }
+
+
+
+table( ModellingResults )  <<Table>>{
+  primary_key( DoE_UUID ): TEXT
+  ---
+  foreign_key( a ): INT
+  ---
+  column( order ): TEXT
+  column( family ): TEXT
+  column( genus ): TEXT
+  column( engName ): TEXT
+  column( deName ): TEXT
+  ---
+  }
+
+
+  
+
+
+@enduml
+
+

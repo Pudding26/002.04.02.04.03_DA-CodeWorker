@@ -1,0 +1,203 @@
+DS11:
+  - col: 'todo_contributor'
+    col_old: 'contributor_old'
+    values:
+      'Pierre Détienne and Regis Miller': 'Pierre Détienne; Regis Miller'
+      'Alice Campbell and Peter Gasson': 'Alice Campbell; Peter Gasson'
+      'unknown': 'Contributor not specified'
+      'Michael Risse': 'Michael Risse'
+      'Darwin Pucha Cofrep': 'Darwin Pucha Cofrep'
+      'Marcq Brooks': 'Marcq Brooks'
+      'Pierre Detienne': 'Pierre Détienne'
+      'Frederic Lens': 'Frederic Lens'
+      'Stéphanie Bodin': 'Stéphanie Bodin'
+      'Elisabeth Wheeler': 'Elisabeth Wheeler'
+      'Bill Bryan': 'Bill Bryan'
+      'J-C Cerre': 'J-C Cerre'
+      'Stanley Yankowski': 'Stanley Yankowski'
+      'Ruling Tian': 'Ruling Tian'
+      'H.D. Ingle': 'H.D. Ingle'
+      'Pieter Baas': 'Pieter Baas'
+      'Raimund Aichbauer': 'Raimund Aichbauer'
+      'Arno FN Brandes': 'Arno FN Brandes'
+      'Carmen Kerr & Edgard Espinoza': 'Carmen Kerr; Edgard Espinoza'
+      'René Klaassen': 'René Klaassen'
+      'M.E. Bakker': 'M.E. Bakker'
+      'Luiz Eduardo de Lima Melo': 'Luiz Eduardo de Lima Melo'
+      'M. Pace, V. Angyalossy, C. Marcati': 'M. Pace; V. Angyalossy; C. Marcati'
+      'Frances Whinder & Peter Gasson': 'Frances Whinder; Peter Gasson'
+      'Regis Miller': 'Regis Miller'
+      'Michael Yoshiya Bangun and Raphael Riammi Tarigan': 'Michael Yoshiya Bangun; Raphael Riammi Tarigan'
+      'Marcelo R. Pace': 'Marcelo R. Pace'
+      'Susanne Scheffknecht': 'Susanne Scheffknecht'
+      'Ben terWelle': 'Ben terWelle'
+      'H.E. Dadswell': 'H.E. Dadswell'
+      'Raquel Carreras Rivery': 'Raquel Carreras Rivery'
+      'Steve Manchester': 'Steve Manchester'
+      'Hans Beeckman': 'Hans Beeckman'
+      'Peter Gasson': 'Peter Gasson'
+      'H.G. Richter': 'H.G. Richter'
+      'Jugo Ilic': 'Jugo Ilic'
+      'Imogen Poole': 'Imogen Poole'
+      'L.Y.T. Westra': 'L.Y.T. Westra'
+      'Sherwin Carlquist': 'Sherwin Carlquist'
+      'A.M.W. Mennega': 'A.M.W. Mennega'
+      'Alina Scheuer': 'Alina Scheuer'
+      'P. Gasson & C. Trafford': 'Peter Gasson; C. Trafford'
+      'Jessica Lee': 'Jessica Lee'
+      'V.M.N. Razakandraibe, A.N.A. Aritsara, T. Ramananantoandro, H. Razafimandimby': 'V.M.N. Razakandraibe; A.N.A. Aritsara; T. Ramananantoandro; H. Razafimandimby'
+      'Emilio Estrada-Ruiz': 'Emilio Estrada-Ruiz'
+      'Marco Alvarado & Teresa Terrazas': 'Marco Alvarado; Teresa Terrazas'
+      'Héctor Rolando Zhiñin Quezada': 'Héctor Rolando Zhiñin Quezada'
+      'Bill Dickison': 'Bill Dickison'
+      'Peter Gasson and Katie Parrish': 'Peter Gasson; Katie Parrish'
+      'Rashmi Srivastava': 'Rashmi Srivastava'
+      'Kasia Ziemińska': 'Kasia Ziemińska'
+      'Suzanne Snider': 'Suzanne Snider'
+      'Andre C. Lima & Carmen Marcati': 'Andre C. Lima; Carmen Marcati'
+      'Nareerat Boonchai': 'Nareerat Boonchai'
+      'Roberto Pujana': 'Roberto Pujana'
+      'João Carlos F Melo Jr': 'João Carlos F Melo Jr'
+      'Elysandre Puech': 'Elysandre Puech'
+      'Shuichi Noshiro': 'Shuichi Noshiro'
+      'Dario DeFranceschi': 'Dario DeFranceschi'
+      'W. John Hayden': 'W. John Hayden'
+      'Ye-Ming Cheng': 'Ye-Ming Cheng'
+      'Vicky Beckers': 'Vicky Beckers'
+      'B.F. Kukachka': 'B.F. Kukachka'
+      'Williams J. Leon': 'Williams J. Leon'
+      'Peter Gasson and Alison Hoare': 'Peter Gasson; Alison Hoare'
+      'Joan Parrott': 'Joan Parrott'
+      'S.J. Lee': 'S.J. Lee'
+
+
+  - col: 'todo_institution'
+    col_old: 'institution_old'
+    values:
+      'Holzforschung München, HFM': 'Holzforschung München, HFM'
+      'unknown': 'unknown'
+      'U.S. National Museum (Smithsonian Institution)': 'Smithsonian Institution, U.S. National Museum'
+      'École Supérieure du Bois (ESB)': 'École Supérieure du Bois, France'
+      'University of Natural Resources and Life Sciences': 'University of Natural Resources and Life Sciences, Austria'
+      'Royal Botanic Gardens - Kew': 'Royal Botanic Gardens - Kew, UK'
+      'Universidade Federal Fluminense': 'Universidade Federal Fluminense, Brazil'
+      'CIRAD - Montpellier, France': 'CIRAD, Montpellier, France'
+      'Santa Barbara Botanic Garden': 'Santa Barbara Botanic Garden, USA'
+      'USDA Forest Products Lab, Madison, WI': 'USDA Forest Products Laboratory, Madison, Wisconsin, USA'
+      'Khorat Fossil Museum': 'Khorat Fossil Museum, Thailand'
+      'EAUX ET FORÊTS, École Supérieure des Sciences Agronomiques, U. dAntananarivo': 'ES-SupAgro Antananarivo, Madagascar'
+      'Leiden University': 'Leiden University, The Netherlands'
+      'Museo Argentino de Ciencias Naturales': 'Museo Argentino de Ciencias Naturales, Argentina'
+      'Universidad Nacional de Loja, Ecuador': 'Universidad Nacional de Loja, Ecuador'
+      'National Fish and Wildlife Forensic Lab': 'National Fish and Wildlife Forensic Lab, USA'
+      'Senckenberg Research Institute': 'Senckenberg Research Institute, Germany'
+      'Naturalis Biodiversity Center': 'Naturalis Biodiversity Center, The Netherlands'
+      'Departamento de Botanica, Universidade de São Paulo': 'Departamento de Botanica, Universidade de São Paulo, Brazil'
+      'State University of Para, Brazil': 'State University of Para, Brazil'
+      'São Paulo State University': 'São Paulo State University, Brazil'
+      'Florida Museum of Natural History': 'Florida Museum of Natural History, USA'
+      'Tropenbos': 'Tropenbos International, The Netherlands'
+      'Forestry and Forest Products Research Institute, Japan': 'Forestry and Forest Products Research Institute, Japan'
+      'International Wood Collectors Society': 'International Wood Collectors Society, USA'
+      'Texas State University, San Marcos': 'Texas State University, San Marcos, USA'
+      "Muséum national d'Histoire naturelle": "Muséum national d'Histoire naturelle, France"
+      'Wood herbarium, Royal Forest Department, Bangkok, Thailand': 'Wood Herbarium, Royal Forest Department, Bangkok, Thailand'
+      'Utrecht University, The Netherlands': 'Utrecht University, The Netherlands'
+      'University of North Carolina - Chapel Hill': 'University of North Carolina, Chapel Hill, USA'
+      'Wood Biology, University of Hamburg': 'Wood Biology, University of Hamburg, Germany'
+      'Universidad Nacional Autónoma de México': 'Universidad Nacional Autónoma de México'
+      'Geological Museum of China, Beijing': 'Geological Museum of China, Beijing'
+      'Laboratorio de Anatomía de Maderas, Venezuela': 'Laboratorio de Anatomía de Maderas, Venezuela'
+      'Laboratory of Plant Systematics, K.U.Leuven': 'Laboratory of Plant Systematics, K.U.Leuven, Belgium'
+      'North Carolina State University': 'North Carolina State University, USA'
+      'Oxford University': 'Oxford University, UK'
+      'Univ Richmond': 'University of Richmond, USA'
+      'Royal Museum of Central Africa, Belgium': 'Royal Museum of Central Africa, Belgium'
+      'Birbal Sahni Institute of Palaeobotany': 'Birbal Sahni Institute of Palaeobotany, India'
+      'Cultures – Environnements. Préhistoire, Antiquité, Moyen Âge': 'Cultures – Environnements, France'
+      'CSIRO, Australia': 'CSIRO, Australia'
+      'Senckenberg Forschungsinstitut': 'Senckenberg Forschungsinstitut, Germany'
+      'Universidade da Região de Joinville - UNIVILLE': 'Universidade da Região de Joinville, Brazil'
+
+  
+
+  - col: 'todo_view'
+    col_old: 'view_old'
+    values:
+      "radial section" : 'RLS'
+      "cross section" : 'TS'
+      "tangential section" : 'TLS'
+
+  - col: 'todo_lens'
+    col_old: 'lens_old'
+    values:
+      "002": "2"
+      "002.5": "2.5"
+      "macro9": None
+      "11": "11"
+      "x 10": "10"
+      "020": "20"
+      "macro12": None
+      "030": "30"
+      "006": "6"
+      "dx130": None
+      "006.5": "6.5"
+      "003": "3"
+      "001.25": "1.25"
+      "x60": "60"
+      "5x": "5"
+      "520": None
+      "macro40": None
+      "32": "32"
+      "060": "60"
+      "x50": "50"
+      "025": "25"
+      "macro10": None
+      "20x": "20"
+      "01.25": "1.25"
+      "005": "5"
+      "dx55": "dx_55"
+      "050": "50"
+      "15X": "15"
+      "0.95": "0.95"
+      "004": "4"
+      "10": "10"
+      "x100": "100"
+      "001": "1"
+      "350": "350"
+      "M10": None
+      "5": "5"
+      "001.5": "1.5"
+      "032": "32"
+      "unk": None
+      "macro18": None
+      "30X": "30"
+      "015": "15"
+      "016": "16"
+      "001.6": "1.6"
+      "macro5": None
+      "6X": "6"
+      "x55": "55"
+      "macro25": None
+      "unknown": None
+      "slide": None
+      "60X": "60"
+      "10x": "10"
+      "010": "10"
+      "040": "40"
+      "55x": "55"
+      "M100": None
+      "063": "63"
+      "100": "100"
+      "macro": None
+      "SEM": None
+      "x 100": "100"
+      "006.3": "6.3"
+      "macro15": None
+      "x25": "25"
+
+  - col: 'woodType'
+    col_old: 'woodType_old'
+    values:
+      "Modern Hardwood": "Hardwood"
+      "Modern Softwood": "Softwood"

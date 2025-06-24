@@ -1,0 +1,17 @@
+TA13_A_DataTransfer_DS09:
+  rename:
+    'No': No_drop
+    Botanische Art: species_todo
+    Code: IFAW_code
+    Herkunft: origin
+    Englischer Standardname: engName
+    Französicher Standardname: deName
+    Deutscher Standardname: frName
+    'Unnamed: 7': Unnamed_drop
+    IFAW_code: TODO
+    origin: TODO
+    engName: TODO
+    deName: TODO
+    frName: TODO
+    species: TODO
+    genus: TODO

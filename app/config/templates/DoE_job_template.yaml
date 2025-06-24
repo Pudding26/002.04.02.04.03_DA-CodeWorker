@@ -1,0 +1,36 @@
+job_uuid: "{job_uuid}"
+
+primary_data:
+  sourceNo: "{sourceNo}"
+  woodType: "{woodType}"
+  family: "{family}"
+  genus: "{genus}"
+  species: "{species}"
+  view: "{view}"
+  lens: "{lens}"
+  maxShots: "{maxShots}"
+  noShotsRange: "{noShotsRange}"
+
+segmentation:
+  filterNo: "{segmentation}"
+
+secondary_data:
+  2ndNo: "{secondary_data}"
+
+modelling:
+  modelID: "{modeling}"
+
+
+
+
+segmentation:
+  filterNo: "{filterNo}"  # Will be resolved from filterMap.yaml
+
+secondary_data:
+  SD_ID: "{secondary_data}"
+
+preprocessing:
+  preProcessingNo: "{preProcessingNo}"  # Will be resolved from preProcessingMap.yaml
+
+modeling:
+  metricModelNo: "{metricModelNo}"         # Will be resolved from metricModelMap.yaml

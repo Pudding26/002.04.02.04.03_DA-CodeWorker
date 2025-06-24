@@ -1,0 +1,7 @@
+PPNO1:
+  name: dummy
+  description: placeholder
+  resampling_method: SMOTE
+  
+    
+  
