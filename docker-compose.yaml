@@ -32,8 +32,17 @@ services:
         GID: ${GID}
     env_file: .env
     volumes:
-      - .:/workspace             # <-- bind the current directory into the container
-    working_dir: /workspace       # <-- ensure container's working directory matches bind mount
+      - .:/workspace
+    working_dir: /workspace
     restart: unless-stopped
     networks:
       - app-net
+    runtime: nvidia  # <- ADD THIS
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+

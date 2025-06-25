@@ -10,9 +10,11 @@
   "extensions": [
     "ms-python.python",
     "ms-toolsai.jupyter",
-    "ms-python.debugpy"
+    "ms-python.debugpy",
+    "ms-toolsai.datawrangler"
   ],
   "postCreateCommand": "pip install -r requirements.txt",
   "remoteUser": "vscode",
-  "mountWorkspaceGitRoot": false
+  "mountWorkspaceGitRoot": false,
+  "runArgs": ["--gpus", "all"]  // <- ADD THIS
 }
