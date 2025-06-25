@@ -10,10 +10,10 @@ from sqlalchemy.orm import relationship
 
 
 
-from app.utils.dataModels.Jobs.BaseJob import BaseJob
-from app.utils.dataModels.Jobs.JobEnums import JobStatus, JobKind
+from app.utils.common.app.utils.dataModels.Jobs.BaseJob import BaseJob
+from app.utils.common.app.utils.dataModels.Jobs.JobEnums import JobStatus, JobKind
 
-from app.utils.SQL.models.jobs.orm_DoEJobs import orm_DoEJobs
+from app.utils.common.app.utils.SQL.models.jobs.orm_DoEJobs import orm_DoEJobs
 
 
 

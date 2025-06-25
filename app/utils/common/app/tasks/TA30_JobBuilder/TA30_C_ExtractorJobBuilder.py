@@ -12,27 +12,27 @@ import numpy as np
 
 from sqlalchemy.orm import Session
 
-from app.utils.general.HelperFunctions import add_hashed_uuid_column
+from app.utils.common.app.utils.general.HelperFunctions import add_hashed_uuid_column
 
 
-from app.utils.dataModels.FilterModel.FilterModel import FilterModel
-from app.utils.dataModels.Jobs.JobEnums import JobKind, JobStatus
+from app.utils.common.app.utils.dataModels.FilterModel.FilterModel import FilterModel
+from app.utils.common.app.utils.dataModels.Jobs.JobEnums import JobKind, JobStatus
 
-from app.utils.dataModels.Jobs.SegmenterJob import (
+from app.utils.common.app.utils.dataModels.Jobs.SegmenterJob import (
     SegmenterJob, SegmenterJobInput
 )
-from app.utils.dataModels.Jobs.ExtractorJob import ExtractorJob, ExtractorJobInput
+from app.utils.common.app.utils.dataModels.Jobs.ExtractorJob import ExtractorJob, ExtractorJobInput
 
 
 
-from app.utils.SQL.models.jobs.api_DoEJobs import DoEJobs_Out
-from app.utils.SQL.models.jobs.api_WorkerJobs import WorkerJobs_Out
-from app.utils.SQL.models.production.api.api_WoodMaster import WoodMaster_Out
+from app.utils.common.app.utils.SQL.models.jobs.api_DoEJobs import DoEJobs_Out
+from app.utils.common.app.utils.SQL.models.jobs.api_WorkerJobs import WorkerJobs_Out
+from app.utils.common.app.utils.SQL.models.production.api.api_WoodMaster import WoodMaster_Out
 
 
 
 
-#from app.utils.SQL.models.temp.api.SegmentationJobs_out import SegmentationJobs_out
+#from app.utils.common.app.utils.SQL.models.temp.api.SegmentationJobs_out import SegmentationJobs_out
 
 
 class TA30_C_ExtractorJobBuilder:

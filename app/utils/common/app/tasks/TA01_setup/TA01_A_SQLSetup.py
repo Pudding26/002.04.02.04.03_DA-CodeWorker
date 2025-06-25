@@ -6,10 +6,10 @@ from sqlalchemy import inspect
 
 
 import logging
-from app.utils.SQL.DBEngine import DBEngine
+from app.utils.common.app.utils.SQL.DBEngine import DBEngine
 
 # SQL Events
-#from app.utils.SQL.events.events_WorkerJobs import (
+#from app.utils.common.app.utils.SQL.events.events_WorkerJobs import (
 #    sync_workerjob_links,
 #    _roll_up_child_status
 #)
@@ -55,7 +55,7 @@ class TA01_A_SQLSetup:
 
     @classmethod
     def createDatabases(cls) -> None:
-        from app.utils.SQL.models.orm_BaseModel import orm_BaseModel
+        from app.utils.common.app.utils.SQL.models.orm_BaseModel import orm_BaseModel
 
         """Check and create all required databases defined by environment variables."""
         db_env_keys = [
@@ -80,29 +80,29 @@ class TA01_A_SQLSetup:
     def create_all_tables():
         
         #progress
-        from app.utils.SQL.models.progress.orm.ProfileArchive import ProfileArchive
-        from app.utils.SQL.models.progress.orm.ProgressArchive import ProgressArchive
+        from app.utils.common.app.utils.SQL.models.progress.orm.ProfileArchive import ProfileArchive
+        from app.utils.common.app.utils.SQL.models.progress.orm.ProgressArchive import ProgressArchive
         
         # raw
-        from app.utils.SQL.models.raw.orm.PrimaryDataRaw import PrimaryDataRaw
+        from app.utils.common.app.utils.SQL.models.raw.orm.PrimaryDataRaw import PrimaryDataRaw
         
         # production
-        from app.utils.SQL.models.production.orm.DS09 import DS09
-        from app.utils.SQL.models.production.orm.DS40 import DS40
-        from app.utils.SQL.models.production.orm.DS12 import DS12
-        from app.utils.SQL.models.production.orm.WoodTableA import WoodTableA
-        from app.utils.SQL.models.production.orm.WoodTableB import WoodTableB
-        from app.utils.SQL.models.production.orm.WoodMaster import WoodMaster
-        from app.utils.SQL.models.production.orm.WoodMasterPotential import WoodMasterPotential
-        from app.utils.SQL.models.production.orm.DoEArchive import DoEArchive
-        from app.utils.SQL.models.production.orm.ModellingResults import ModellingResults
+        from app.utils.common.app.utils.SQL.models.production.orm.DS09 import DS09
+        from app.utils.common.app.utils.SQL.models.production.orm.DS40 import DS40
+        from app.utils.common.app.utils.SQL.models.production.orm.DS12 import DS12
+        from app.utils.common.app.utils.SQL.models.production.orm.WoodTableA import WoodTableA
+        from app.utils.common.app.utils.SQL.models.production.orm.WoodTableB import WoodTableB
+        from app.utils.common.app.utils.SQL.models.production.orm.WoodMaster import WoodMaster
+        from app.utils.common.app.utils.SQL.models.production.orm.WoodMasterPotential import WoodMasterPotential
+        from app.utils.common.app.utils.SQL.models.production.orm.DoEArchive import DoEArchive
+        from app.utils.common.app.utils.SQL.models.production.orm.ModellingResults import ModellingResults
 
 
 
         # jobs
-        from app.utils.SQL.models.jobs.orm_DoEJobs import orm_DoEJobs
-        from app.utils.SQL.models.jobs.orm_WorkerJobs import orm_WorkerJobs
-        from app.utils.SQL.models.jobs.orm_JobLink import orm_JobLink
+        from app.utils.common.app.utils.SQL.models.jobs.orm_DoEJobs import orm_DoEJobs
+        from app.utils.common.app.utils.SQL.models.jobs.orm_WorkerJobs import orm_WorkerJobs
+        from app.utils.common.app.utils.SQL.models.jobs.orm_JobLink import orm_JobLink
     
 
         grouped_models = {

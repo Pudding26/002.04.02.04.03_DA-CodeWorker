@@ -4,8 +4,8 @@ from PIL import Image
 from memory_profiler import profile
 
 from app.tasks.TaskBase import TaskBase
-from app.utils.HDF5.SWMR_HDF5Handler import SWMR_HDF5Handler
-from app.utils.HDF5.HDF5Utils import HDF5Utils
+from app.utils.common.app.utils.HDF5.SWMR_HDF5Handler import SWMR_HDF5Handler
+from app.utils.common.app.utils.HDF5.HDF5Utils import HDF5Utils
 
 # In-memory memory profiling streams
 mem_Streams = {

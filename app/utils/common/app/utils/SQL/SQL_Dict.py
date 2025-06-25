@@ -3,7 +3,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from typing import Optional, List
 
-from app.utils.SQL.DBEngine import DBEngine
+from app.utils.common.app.utils.SQL.DBEngine import DBEngine
 
 
 class SQL_Dict(DBEngine):

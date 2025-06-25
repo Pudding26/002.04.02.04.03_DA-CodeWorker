@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Integer, Float, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from app.utils.SQL.models.orm_BaseModel import orm_BaseModel
+from app.utils.common.app.utils.SQL.models.orm_BaseModel import orm_BaseModel
 
 class WoodMaster(orm_BaseModel):
     __tablename__ = "woodMaster"

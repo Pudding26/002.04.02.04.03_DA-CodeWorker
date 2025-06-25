@@ -8,9 +8,9 @@ import time
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.utils.SQL.models.progress.api.api_progressArchive import ProgressArchiveOut
-from app.utils.SQL.SQL_Dict import SQL_Dict  # adjust if your path differs
-from app.utils.SQL.DBEngine import DBEngine  # adjust if your path differs
+from app.utils.common.app.utils.SQL.models.progress.api.api_progressArchive import ProgressArchiveOut
+from app.utils.common.app.utils.SQL.SQL_Dict import SQL_Dict  # adjust if your path differs
+from app.utils.common.app.utils.SQL.DBEngine import DBEngine  # adjust if your path differs
 
 class TaskController:
     def __init__(self, task_name: str, db_key: str = "progress", task_uuid: str = None):

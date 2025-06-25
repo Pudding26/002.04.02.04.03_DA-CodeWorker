@@ -1,14 +1,14 @@
 import pandas as pd
 
 from app.tasks.TaskBase import TaskBase
-from app.utils.SQL.SQL_Df import SQL_Df
-from app.utils.mapping.YamlColumnMapper import YamlColumnMapper
+from app.utils.common.app.utils.SQL.SQL_Df import SQL_Df
+from app.utils.common.app.utils.mapping.YamlColumnMapper import YamlColumnMapper
 import logging
 from sqlalchemy.orm import Session
-from app.utils.SQL.DBEngine import DBEngine
+from app.utils.common.app.utils.SQL.DBEngine import DBEngine
 
 
-from app.utils.SQL.models.production.orm.DS40 import DS40
+from app.utils.common.app.utils.SQL.models.production.orm.DS40 import DS40
 
 
 

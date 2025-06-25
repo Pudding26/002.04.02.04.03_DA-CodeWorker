@@ -9,8 +9,8 @@ from threading import Thread
 import uuid
 import time
 
-from app.utils.controlling.TaskController import TaskController
-from app.utils.SQL.SQL_Dict import SQL_Dict
+from app.utils.common.app.utils.controlling.TaskController import TaskController
+from app.utils.common.app.utils.SQL.SQL_Dict import SQL_Dict
 
 
 class TaskHandler:

@@ -11,7 +11,7 @@ from typing import List, Optional, Sequence, Type
 from sqlalchemy import select, and_, or_
 from sqlalchemy.sql.elements import ColumnElement
 
-from app.utils.dataModels.FilterModel.FilterModel import FilterModel, Logic
+from app.utils.common.app.utils.dataModels.FilterModel.FilterModel import FilterModel, Logic
 
 __all__ = ["to_sqlalchemy"]
 

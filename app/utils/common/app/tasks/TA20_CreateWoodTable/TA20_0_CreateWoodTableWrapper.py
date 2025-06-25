@@ -3,13 +3,13 @@ import pandas as pd
 import logging
 
 from app.tasks.TaskBase import TaskBase
-from app.utils.controlling.TaskController import TaskController
-from app.utils.SQL.SQL_Df import SQL_Df
-from app.utils.YAML.YAMLUtils import YAMLUtils
+from app.utils.common.app.utils.controlling.TaskController import TaskController
+from app.utils.common.app.utils.SQL.SQL_Df import SQL_Df
+from app.utils.common.app.utils.YAML.YAMLUtils import YAMLUtils
 
-from app.utils.SQL.models.production.api.api_DoEArchive import DoEArchive_Out
-from app.utils.SQL.models.temp.api.api_DoEJobs import DoEJobs_Out
-from app.utils.SQL.models.production.api.api_ModellingResults import ModellingResults_Out
+from app.utils.common.app.utils.SQL.models.production.api.api_DoEArchive import DoEArchive_Out
+from app.utils.common.app.utils.SQL.models.temp.api.api_DoEJobs import DoEJobs_Out
+from app.utils.common.app.utils.SQL.models.production.api.api_ModellingResults import ModellingResults_Out
 
 
 

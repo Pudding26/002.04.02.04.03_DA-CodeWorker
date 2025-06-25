@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Integer, Float
-from app.utils.SQL.models.orm_BaseModel import orm_BaseModel
+from app.utils.common.app.utils.SQL.models.orm_BaseModel import orm_BaseModel
 
 
 class WoodTableB(orm_BaseModel):

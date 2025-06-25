@@ -13,18 +13,18 @@ from threading import Event
 
 from app.tasks.TaskBase import TaskBase
 
-from app.utils.SQL.models.jobs.api_WorkerJobs import WorkerJobs_Out
+from app.utils.common.app.utils.SQL.models.jobs.api_WorkerJobs import WorkerJobs_Out
 
-from app.utils.dataModels.Jobs.SegmenterJob import SegmenterJob
-from app.utils.dataModels.Jobs.ExtractorJob import ExtractorJobInput
-from app.utils.dataModels.FilterModel.FilterModel import FilterModel
-
-
-
-from app.utils.dataModels.Jobs.JobEnums import JobStatus
+from app.utils.common.app.utils.dataModels.Jobs.SegmenterJob import SegmenterJob
+from app.utils.common.app.utils.dataModels.Jobs.ExtractorJob import ExtractorJobInput
+from app.utils.common.app.utils.dataModels.FilterModel.FilterModel import FilterModel
 
 
-from app.utils.HDF5.SWMR_HDF5Handler import SWMR_HDF5Handler
+
+from app.utils.common.app.utils.dataModels.Jobs.JobEnums import JobStatus
+
+
+from app.utils.common.app.utils.HDF5.SWMR_HDF5Handler import SWMR_HDF5Handler
 
 
 from app.tasks.TA41_ImageSegmentation.TA41_A_Segmenter import TA41_A_Segmenter

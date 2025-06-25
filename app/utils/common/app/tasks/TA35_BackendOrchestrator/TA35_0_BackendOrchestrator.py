@@ -5,9 +5,9 @@ import pprint
 import pandas as pd
 import httpx
 
-from app.utils.controlling.TaskController import TaskController
+from app.utils.common.app.utils.controlling.TaskController import TaskController
 from app.tasks.TaskBase import TaskBase
-from app.utils.HDF5.SWMR_HDF5Handler import SWMR_HDF5Handler
+from app.utils.common.app.utils.HDF5.SWMR_HDF5Handler import SWMR_HDF5Handler
 
 
 

@@ -1,5 +1,5 @@
 from typing import Optional
-from app.utils.SQL.models.api_BaseModel import api_BaseModel
+from app.utils.common.app.utils.SQL.models.api_BaseModel import api_BaseModel
 
 class SegmentationResultBase(api_BaseModel):
 

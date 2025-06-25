@@ -12,9 +12,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from app.utils.dataModels.Jobs.JobEnums import JobKind, RelationState
+from app.utils.common.app.utils.dataModels.Jobs.JobEnums import JobKind, RelationState
 
-from app.utils.SQL.models.orm_BaseModel import orm_BaseModel
+from app.utils.common.app.utils.SQL.models.orm_BaseModel import orm_BaseModel
 
 
 class orm_JobLink(orm_BaseModel):

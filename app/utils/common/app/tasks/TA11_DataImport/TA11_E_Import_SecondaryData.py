@@ -5,7 +5,7 @@ import logging
 from memory_profiler import profile
 
 from app.tasks.TaskBase import TaskBase
-from app.utils.SQL.SQL_Df import SQL_Df
+from app.utils.common.app.utils.SQL.SQL_Df import SQL_Df
 
 
 mem_Streams = {

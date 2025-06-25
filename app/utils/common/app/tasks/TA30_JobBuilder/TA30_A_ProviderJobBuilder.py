@@ -8,18 +8,18 @@ import hashlib
 
 from sqlalchemy.orm import Session
 
-from app.utils.general.HelperFunctions import add_hashed_uuid_column
+from app.utils.common.app.utils.general.HelperFunctions import add_hashed_uuid_column
 
 
-from app.utils.dataModels.Jobs.JobEnums import JobKind, JobStatus
+from app.utils.common.app.utils.dataModels.Jobs.JobEnums import JobKind, JobStatus
 
-from app.utils.dataModels.Jobs.ProviderJob import (
+from app.utils.common.app.utils.dataModels.Jobs.ProviderJob import (
     ProviderJob, ProviderJobInput, ProviderAttrs
 )
 
 
 
-from app.utils.SQL.models.jobs.api_WorkerJobs import WorkerJobs_Out
+from app.utils.common.app.utils.SQL.models.jobs.api_WorkerJobs import WorkerJobs_Out
 
 
 class TA30_A_ProviderJobBuilder:

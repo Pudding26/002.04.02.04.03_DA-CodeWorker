@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Integer, Float, ForeignKey
 from sqlalchemy.orm import relationship
-from app.utils.SQL.models.orm_BaseModel import orm_BaseModel
+from app.utils.common.app.utils.SQL.models.orm_BaseModel import orm_BaseModel
 
 class SegmentationResultsAPI(orm_BaseModel):
     __tablename__ = "segmentationResults"

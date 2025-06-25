@@ -6,7 +6,7 @@ from copy import deepcopy
 import pandas as pd
 from typing import List
 
-from app.utils.dataModels.Jobs.DoEJob import (
+from app.utils.common.app.utils.dataModels.Jobs.DoEJob import (
     DoEJob, DOE_config, PrimaryData, SegmentationCfg,
     SecondaryData, PreProcessingCfg, ModelingCfg
 )

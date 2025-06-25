@@ -1,6 +1,6 @@
 from typing import Optional, ClassVar, List, Any
-from app.utils.SQL.models.api_BaseModel import api_BaseModel
-from app.utils.SQL.models.production.orm.DoEArchive import DoEArchive
+from app.utils.common.app.utils.SQL.models.api_BaseModel import api_BaseModel
+from app.utils.common.app.utils.SQL.models.production.orm.DoEArchive import DoEArchive
 
 class DoEArchive_Out(api_BaseModel):
     orm_class: ClassVar = DoEArchive

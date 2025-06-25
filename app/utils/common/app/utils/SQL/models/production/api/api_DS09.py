@@ -5,9 +5,9 @@ from typing import Optional, List, ClassVar, Any
 from sqlalchemy.orm import Session
 import logging
 
-from app.utils.SQL.models.api_BaseModel import api_BaseModel
+from app.utils.common.app.utils.SQL.models.api_BaseModel import api_BaseModel
 
-from app.utils.SQL.models.production.orm.DS09 import DS09
+from app.utils.common.app.utils.SQL.models.production.orm.DS09 import DS09
 
 
 class DS09_Out(api_BaseModel):

@@ -2,10 +2,10 @@ import logging
 
 from fastapi import APIRouter
 from app.tasks.TaskWrapper import TaskRequestBase as TaskRequest
-from app.utils.API.TaskHandler import TaskHandler
+from app.utils.common.app.utils.API.TaskHandler import TaskHandler
 
 
-from app.utils.controlling.TaskController import TaskController
+from app.utils.common.app.utils.controlling.TaskController import TaskController
 
 router = APIRouter()
 handler = TaskHandler()

@@ -8,7 +8,7 @@ from enum import Enum
 import json
 import math
 
-from app.utils.dataModels.Jobs.util.RetryInfo import RetryInfo
+from app.utils.common.app.utils.dataModels.Jobs.util.RetryInfo import RetryInfo
 
 class BaseJob(BaseModel):
     model_config = ConfigDict(extra="forbid")

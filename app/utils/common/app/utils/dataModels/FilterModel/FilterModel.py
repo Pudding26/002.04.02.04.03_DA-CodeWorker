@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 import pandas as pd
 from typing import List, Optional
 from pandas import Series, DataFrame
-from app.utils.dataModels.FilterModel.conditions import Condition, ConditionGroup, Logic, Op, Border
+from app.utils.common.app.utils.dataModels.FilterModel.conditions import Condition, ConditionGroup, Logic, Op, Border
 
 
 class FilterModel(BaseModel):

@@ -3,8 +3,8 @@ from sqlalchemy.orm.attributes import InstrumentedAttribute
 from typing import Type, Optional
 
 
-from app.utils.dataModels.FilterModel.FilterModel import FilterModel
-from app.utils.dataModels.FilterModel.sql_builder import to_sqlalchemy
+from app.utils.common.app.utils.dataModels.FilterModel.FilterModel import FilterModel
+from app.utils.common.app.utils.dataModels.FilterModel.sql_builder import to_sqlalchemy
 
 class SQL_FetchBuilder:
     """

@@ -10,11 +10,11 @@ from sqlalchemy.orm import Mapper
 
 from sqlalchemy import case
 
-from app.utils.dataModels.Jobs.JobEnums import JobStatus, JobKind, RelationState
+from app.utils.common.app.utils.dataModels.Jobs.JobEnums import JobStatus, JobKind, RelationState
 
-from app.utils.SQL.models.jobs.orm_WorkerJobs import orm_WorkerJobs
-from app.utils.SQL.models.jobs.orm_JobLink import orm_JobLink
-from app.utils.SQL.models.jobs.orm_DoEJobs import orm_DoEJobs
+from app.utils.common.app.utils.SQL.models.jobs.orm_WorkerJobs import orm_WorkerJobs
+from app.utils.common.app.utils.SQL.models.jobs.orm_JobLink import orm_JobLink
+from app.utils.common.app.utils.SQL.models.jobs.orm_DoEJobs import orm_DoEJobs
 
 
 def _status_to_rel_state(status: str) -> RelationState:

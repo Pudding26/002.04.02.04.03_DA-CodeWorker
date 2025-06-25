@@ -4,16 +4,16 @@ import numpy as np
 import os
 import logging
 from app.tasks.TaskBase import TaskBase
-from app.utils.SQL.SQL_Df import SQL_Df
+from app.utils.common.app.utils.SQL.SQL_Df import SQL_Df
 
 if os.getenv("DEBUG_MODE") == "True":
     import memory_profiler
     memory_profiler.profile.disable = lambda: None
-from app.utils.general.HelperFunctions import generate_deterministic_string_uuid
+from app.utils.common.app.utils.general.HelperFunctions import generate_deterministic_string_uuid
 
 
-from app.utils.SQL.models.raw.orm.PrimaryDataRaw import PrimaryDataRaw
-from app.utils.SQL.models.raw.api.api_PrimaryDataRaw import PrimaryDataRaw_Out
+from app.utils.common.app.utils.SQL.models.raw.orm.PrimaryDataRaw import PrimaryDataRaw
+from app.utils.common.app.utils.SQL.models.raw.api.api_PrimaryDataRaw import PrimaryDataRaw_Out
 
 
 

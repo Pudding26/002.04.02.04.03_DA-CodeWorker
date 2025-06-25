@@ -5,16 +5,16 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 #ORM
-from app.utils.SQL.models.jobs.orm_JobLink import orm_JobLink
+from app.utils.common.app.utils.SQL.models.jobs.orm_JobLink import orm_JobLink
 
 
 
-from app.utils.dataModels.Jobs.BaseJob import BaseJob
-from app.utils.dataModels.Jobs.DoEJob import DoEJob
+from app.utils.common.app.utils.dataModels.Jobs.BaseJob import BaseJob
+from app.utils.common.app.utils.dataModels.Jobs.DoEJob import DoEJob
 
-from app.utils.dataModels.Jobs.JobEnums import JobStatus, JobKind, RelationState
+from app.utils.common.app.utils.dataModels.Jobs.JobEnums import JobStatus, JobKind, RelationState
 
-from app.utils.SQL.models.jobs.orm_WorkerJobs import orm_WorkerJobs
+from app.utils.common.app.utils.SQL.models.jobs.orm_WorkerJobs import orm_WorkerJobs
 
 from uuid import UUID
 

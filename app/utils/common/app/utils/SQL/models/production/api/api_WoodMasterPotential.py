@@ -1,11 +1,11 @@
 from typing import Optional, List, ClassVar, Any
 from datetime import datetime
-from app.utils.SQL.models.api_BaseModel import api_BaseModel
+from app.utils.common.app.utils.SQL.models.api_BaseModel import api_BaseModel
 
 
-from app.utils.SQL.models.production.orm.WoodMasterPotential import WoodMasterPotential  # Assuming this ORM class exists
+from app.utils.common.app.utils.SQL.models.production.orm.WoodMasterPotential import WoodMasterPotential  # Assuming this ORM class exists
 
-from app.utils.SQL.models.enums import sampleID_statusEnum
+from app.utils.common.app.utils.SQL.models.enums import sampleID_statusEnum
 
 
 class WoodMasterPotential_Out(api_BaseModel):

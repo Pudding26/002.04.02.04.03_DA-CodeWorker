@@ -3,7 +3,7 @@ import uuid
 import pandas as pd
 from datetime import datetime
 from sqlalchemy.orm import Session
-from app.utils.SQL.models.progress.orm.ProfileArchive import ProfileArchive  # <- import the model above
+from app.utils.common.app.utils.SQL.models.progress.orm.ProfileArchive import ProfileArchive  # <- import the model above
 
 class ProfileLogger:
     """

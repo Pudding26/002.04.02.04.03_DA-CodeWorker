@@ -1,6 +1,6 @@
 from typing import List, ClassVar, Any
-from app.utils.SQL.models.api_BaseModel import api_BaseModel
-from app.utils.SQL.models.jobs.orm_DoEJobs import orm_DoEJobs
+from app.utils.common.app.utils.SQL.models.api_BaseModel import api_BaseModel
+from app.utils.common.app.utils.SQL.models.jobs.orm_DoEJobs import orm_DoEJobs
 
 from datetime import datetime
 

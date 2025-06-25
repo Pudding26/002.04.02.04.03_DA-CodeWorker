@@ -6,10 +6,10 @@ if os.getenv("DEBUG_MODE") == "True":
     import memory_profiler
     memory_profiler.profile.disable = lambda: None
 from app.tasks.TaskBase import TaskBase
-from app.utils.SQL.SQL_Df import SQL_Df
-from app.utils.controlling.TaskController import TaskController
-from app.utils.mapping.YamlColumnMapper import YamlColumnMapper
-from app.utils.SQL.SQLiteHandler import SQLiteHandler
+from app.utils.common.app.utils.SQL.SQL_Df import SQL_Df
+from app.utils.common.app.utils.controlling.TaskController import TaskController
+from app.utils.common.app.utils.mapping.YamlColumnMapper import YamlColumnMapper
+from app.utils.common.app.utils.SQL.SQLiteHandler import SQLiteHandler
 
 class TA12_D_Transfer_DS11(TaskBase):
     def setup(self):

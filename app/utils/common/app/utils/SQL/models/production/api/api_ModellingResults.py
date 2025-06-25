@@ -1,6 +1,6 @@
 from typing import List, ClassVar, Any
-from app.utils.SQL.models.api_BaseModel import api_BaseModel
-from app.utils.SQL.models.production.orm.ModellingResults import ModellingResults
+from app.utils.common.app.utils.SQL.models.api_BaseModel import api_BaseModel
+from app.utils.common.app.utils.SQL.models.production.orm.ModellingResults import ModellingResults
 
 class ModellingResults_Out(api_BaseModel):
     orm_class: ClassVar = ModellingResults

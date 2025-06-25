@@ -1,10 +1,10 @@
 from typing import List, ClassVar, Any
-from app.utils.SQL.models.api_BaseModel import api_BaseModel
-from app.utils.SQL.models.temp.orm.JobLink import JobLink
+from app.utils.common.app.utils.SQL.models.api_BaseModel import api_BaseModel
+from app.utils.common.app.utils.SQL.models.temp.orm.JobLink import JobLink
 
 from pydantic import Field
 
-from app.utils.dataModels.Jobs.JobEnums import JobKind, RelationState
+from app.utils.common.app.utils.dataModels.Jobs.JobEnums import JobKind, RelationState
 
 
 

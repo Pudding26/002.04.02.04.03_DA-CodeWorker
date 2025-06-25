@@ -8,7 +8,7 @@ import logging
 class _Base:
     @classmethod
     def store_dataframe(cls, df: pd.DataFrame, db_key: str, method: str = "append"):
-        from app.utils.SQL.DBEngine import DBEngine
+        from app.utils.common.app.utils.SQL.DBEngine import DBEngine
         session: Session = DBEngine(db_key).get_session()
         try:
             with session.begin():
@@ -31,7 +31,7 @@ class _Base:
 
     @classmethod
     def store_dataframe_debug(cls, df: pd.DataFrame, db_key: str, method: str = "append"):
-        from app.utils.SQL.DBEngine import DBEngine
+        from app.utils.common.app.utils.SQL.DBEngine import DBEngine
         session: Session = DBEngine(db_key).get_session()
         try:
             with session.begin():

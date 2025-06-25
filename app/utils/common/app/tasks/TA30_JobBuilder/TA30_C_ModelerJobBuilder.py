@@ -8,20 +8,20 @@ import random
 from app.tasks.TaskBase import TaskBase
 
 
-from app.utils.SQL.models.temp.api.api_DoEJobs import DoEJobs_Out
-from app.utils.SQL.models.production.api.api_WoodMasterPotential import WoodMasterPotential_Out
-from app.utils.SQL.models.production.api.api_WoodMaster import WoodMaster_Out
+from app.utils.common.app.utils.SQL.models.temp.api.api_DoEJobs import DoEJobs_Out
+from app.utils.common.app.utils.SQL.models.production.api.api_WoodMasterPotential import WoodMasterPotential_Out
+from app.utils.common.app.utils.SQL.models.production.api.api_WoodMaster import WoodMaster_Out
 
 
 
-from app.utils.dataModels.FilterModel.FilterModel import FilterModel
-from app.utils.dataModels.FilterModel.FilterModel import Border
+from app.utils.common.app.utils.dataModels.FilterModel.FilterModel import FilterModel
+from app.utils.common.app.utils.dataModels.FilterModel.FilterModel import Border
 
-from app.utils.dataModels.Jobs.DoEJob import DoEJob
-from app.utils.dataModels.Jobs.ProviderJob import ProviderJob
+from app.utils.common.app.utils.dataModels.Jobs.DoEJob import DoEJob
+from app.utils.common.app.utils.dataModels.Jobs.ProviderJob import ProviderJob
 
 
-#from app.utils.SQL.models.temp.api.SegmentationJobs_out import SegmentationJobs_out
+#from app.utils.common.app.utils.SQL.models.temp.api.SegmentationJobs_out import SegmentationJobs_out
 
 
 class TA30_C_ModelerJobBuilder(TaskBase):

@@ -1,0 +1,39 @@
+version: "3.8"
+
+volumes:
+  s003-v9699_lele-da-ts:
+    external: true
+
+networks:
+  app-net:
+    driver: bridge
+
+services:
+  s003-c9699_lele-da-ts:
+    container_name: s003-c9599_lele-da-ts
+    image: tailscale/tailscale:latest
+    environment:
+      TS_AUTHKEY: ${DA_CPU_WORKER_TAILSCALE_AUTH_KEY}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_EXTRA_ARGS: --hostname=DA2025-worker-Len-1 --advertise-tags=tag:da2025
+    volumes:
+      - s003-v9699_lele-da-ts:/var/lib/tailscale
+    restart: unless-stopped
+    networks:
+      - app-net
+
+  s003-c9603_lele-da-worker:
+    container_name: s003-c9603_lele-da-worker
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+      args:
+        UID: ${UID}
+        GID: ${GID}
+    env_file: .env
+    volumes:
+      - .:/workspace             # <-- bind the current directory into the container
+    working_dir: /workspace       # <-- ensure container's working directory matches bind mount
+    restart: unless-stopped
+    networks:
+      - app-net

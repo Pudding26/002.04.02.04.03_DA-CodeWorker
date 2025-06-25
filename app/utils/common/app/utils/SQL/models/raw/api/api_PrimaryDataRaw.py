@@ -2,9 +2,9 @@ from pydantic import BaseModel, ConfigDict
 from typing import Optional, List, ClassVar, Any
 
 
-from app.utils.SQL.models.api_BaseModel import api_BaseModel
+from app.utils.common.app.utils.SQL.models.api_BaseModel import api_BaseModel
 
-from app.utils.SQL.models.raw.orm.PrimaryDataRaw import PrimaryDataRaw
+from app.utils.common.app.utils.SQL.models.raw.orm.PrimaryDataRaw import PrimaryDataRaw
 
 class PrimaryDataRaw_Out(api_BaseModel):
 

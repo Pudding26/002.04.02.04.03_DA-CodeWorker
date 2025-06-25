@@ -4,9 +4,9 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 import logging
 
-from app.utils.SQL.DBEngine import DBEngine
-from app.utils.SQL.models.progress.orm.ProgressArchive import ProgressArchive
-from app.utils.SQL.models.api_BaseModel import api_BaseModel
+from app.utils.common.app.utils.SQL.DBEngine import DBEngine
+from app.utils.common.app.utils.SQL.models.progress.orm.ProgressArchive import ProgressArchive
+from app.utils.common.app.utils.SQL.models.api_BaseModel import api_BaseModel
 
 
 class ProgressArchiveOut(api_BaseModel):

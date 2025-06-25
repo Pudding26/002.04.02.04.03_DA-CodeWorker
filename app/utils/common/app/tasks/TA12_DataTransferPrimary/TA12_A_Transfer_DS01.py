@@ -5,10 +5,10 @@ if os.getenv("DEBUG_MODE") == "True":
     import memory_profiler
     memory_profiler.profile.disable = lambda: None
 from app.tasks.TaskBase import TaskBase
-from app.utils.SQL.SQL_Df import SQL_Df
-from app.utils.HDF5.HDF5_Inspector import HDF5Inspector
-from app.utils.general.HelperFunctions import split_df_based_on_max_split
-from app.utils.mapping.YamlColumnMapper import YamlColumnMapper
+from app.utils.common.app.utils.SQL.SQL_Df import SQL_Df
+from app.utils.common.app.utils.HDF5.HDF5_Inspector import HDF5Inspector
+from app.utils.common.app.utils.general.HelperFunctions import split_df_based_on_max_split
+from app.utils.common.app.utils.mapping.YamlColumnMapper import YamlColumnMapper
 
 
 

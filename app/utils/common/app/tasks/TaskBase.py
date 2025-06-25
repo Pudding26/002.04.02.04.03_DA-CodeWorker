@@ -8,9 +8,9 @@ import httpx
 from pathlib import Path
 import yaml
 from datetime import datetime
-from app.utils.controlling.TaskController import TaskController
-from app.utils.SQL.DBEngine import DBEngine
-from app.utils.logger.ProfileLogger import ProfileLogger 
+from app.utils.common.app.utils.controlling.TaskController import TaskController
+from app.utils.common.app.utils.SQL.DBEngine import DBEngine
+from app.utils.common.app.utils.logger.ProfileLogger import ProfileLogger 
 from sqlalchemy.orm import Session
 
 class TaskBase(ABC):

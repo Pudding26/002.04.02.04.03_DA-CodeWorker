@@ -1,6 +1,6 @@
 from typing import Optional, ClassVar
-from app.utils.SQL.models.api_BaseModel import api_BaseModel
-from app.utils.SQL.models.production.orm.WoodTableB import WoodTableB
+from app.utils.common.app.utils.SQL.models.api_BaseModel import api_BaseModel
+from app.utils.common.app.utils.SQL.models.production.orm.WoodTableB import WoodTableB
 
 class WoodTableB_Out(api_BaseModel):
     orm_class: ClassVar = WoodTableB

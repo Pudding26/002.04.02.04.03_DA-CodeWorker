@@ -1,7 +1,7 @@
 # ORM Model: app/utils/SQL/models/raw/orm/PrimaryDataRaw.py
 
 from sqlalchemy import Column, String, Integer, Boolean, BigInteger, Float
-from app.utils.SQL.models.orm_BaseModel import orm_BaseModel
+from app.utils.common.app.utils.SQL.models.orm_BaseModel import orm_BaseModel
 
 
 

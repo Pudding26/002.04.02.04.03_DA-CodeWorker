@@ -5,12 +5,12 @@ import logging
 from app.tasks.TaskBase import TaskBase
 from app.tasks.TA27_DesignOfExperiments.TA27_B_DoEExpander import TA27_B_DoEExpander
 from app.tasks.TA27_DesignOfExperiments.TA27_A_DoEJobGenerator import TA27_A_DoEJobGenerator
-from app.utils.SQL.SQL_Df import SQL_Df
-from app.utils.YAML.YAMLUtils import YAMLUtils
+from app.utils.common.app.utils.SQL.SQL_Df import SQL_Df
+from app.utils.common.app.utils.YAML.YAMLUtils import YAMLUtils
 
-from app.utils.SQL.models.production.api.api_DoEArchive import DoEArchive_Out
-from app.utils.SQL.models.jobs.api_DoEJobs import DoEJobs_Out 
-from app.utils.SQL.models.production.api.api_ModellingResults import ModellingResults_Out
+from app.utils.common.app.utils.SQL.models.production.api.api_DoEArchive import DoEArchive_Out
+from app.utils.common.app.utils.SQL.models.jobs.api_DoEJobs import DoEJobs_Out 
+from app.utils.common.app.utils.SQL.models.production.api.api_ModellingResults import ModellingResults_Out
 
 
 logger = logging.getLogger(__name__)

@@ -1,7 +1,7 @@
 from sqlalchemy import select, distinct
 from typing import Optional, Type
 
-from app.utils.SQL.DBEngine import DBEngine
+from app.utils.common.app.utils.SQL.DBEngine import DBEngine
 
 
 def _fetch_distinct_values(

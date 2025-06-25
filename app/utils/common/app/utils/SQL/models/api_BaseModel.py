@@ -10,28 +10,28 @@ from uuid import uuid4
 from tqdm import tqdm
 
 from pydantic import BaseModel
-from app.utils.SQL.models import enums
+from app.utils.common.app.utils.SQL.models import enums
 
-from app.utils.SQL.errors import BulkInsertError
-
-
-from app.utils.SQL.models.methods._bulk_save_objects import _bulk_save_objects
-from app.utils.SQL.models.methods._model_validate_dataframe import _model_validate_dataframe
-from app.utils.SQL.models.methods._filter_table_by_dict import _filter_table_by_dict
-
-from app.utils.dataModels.FilterModel.FilterModel import FilterModel
+from app.utils.common.app.utils.SQL.errors import BulkInsertError
 
 
-from app.utils.SQL.SQL_FetchBuilder import SQL_FetchBuilder
-from app.utils.SQL.to_SQLSanitizer import to_SQLSanitizer
-from app.utils.QM.PydanticQM import PydanticQM
+from app.utils.common.app.utils.SQL.models.methods._bulk_save_objects import _bulk_save_objects
+from app.utils.common.app.utils.SQL.models.methods._model_validate_dataframe import _model_validate_dataframe
+from app.utils.common.app.utils.SQL.models.methods._filter_table_by_dict import _filter_table_by_dict
+
+from app.utils.common.app.utils.dataModels.FilterModel.FilterModel import FilterModel
+
+
+from app.utils.common.app.utils.SQL.SQL_FetchBuilder import SQL_FetchBuilder
+from app.utils.common.app.utils.SQL.to_SQLSanitizer import to_SQLSanitizer
+from app.utils.common.app.utils.QM.PydanticQM import PydanticQM
 
 
 from typing import List, Type, TypeVar, Optional, Any, Dict, ClassVar, Union, get_origin
 
 
 
-from app.utils.SQL.DBEngine import DBEngine
+from app.utils.common.app.utils.SQL.DBEngine import DBEngine
 
 
 
@@ -76,7 +76,7 @@ class api_BaseModel(BaseModel):
             - to_sql
         • If `method == "replace"` the target table is truncated first.
         """
-        from app.utils.SQL.DBEngine import DBEngine
+        from app.utils.common.app.utils.SQL.DBEngine import DBEngine
         from sqlalchemy.orm import sessionmaker
         
         
@@ -197,7 +197,7 @@ class api_BaseModel(BaseModel):
         Returns:
             int: Number of rows deleted.
         """
-        from app.utils.SQL.DBEngine import DBEngine
+        from app.utils.common.app.utils.SQL.DBEngine import DBEngine
 
         orm_class = orm_class or getattr(cls, "orm_class", None)
         db_key = db_key or getattr(cls, "db_key", "raw")
@@ -301,7 +301,7 @@ class api_BaseModel(BaseModel):
         """
         Efficiently fetch distinct values of a single column from the DB.
         """
-        from app.utils.SQL.models.methods._fetch_distinct_values import _fetch_distinct_values
+        from app.utils.common.app.utils.SQL.models.methods._fetch_distinct_values import _fetch_distinct_values
         return _fetch_distinct_values(
             cls=cls,
             column=column,
@@ -368,7 +368,7 @@ class api_BaseModel(BaseModel):
         Assumes row exists.
         """
         from sqlalchemy.orm import Session
-        from app.utils.SQL.DBEngine import DBEngine
+        from app.utils.common.app.utils.SQL.DBEngine import DBEngine
 
         db_key = db_key or getattr(cls, "db_key", "raw")
         orm_class = getattr(cls, "orm_class", None)

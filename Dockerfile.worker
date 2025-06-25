@@ -1,0 +1,30 @@
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+
+# Accept UID/GID as build args
+ARG USERNAME=vscode
+ARG UID=1000
+ARG GID=1000
+
+# Set up user
+RUN groupadd --gid $GID $USERNAME \
+    && useradd --uid $UID --gid $GID -m $USERNAME -s /bin/bash \
+    && apt-get update && apt-get install -y sudo \
+    && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    python3 python3-pip python3-dev gcc libpq-dev \
+    && apt-get clean
+
+# Set up working directory with correct ownership
+WORKDIR /workspace
+RUN chown $USERNAME:$USERNAME /workspace
+
+# Install requirements
+COPY requirements.txt /workspace/requirements.txt
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+USER $USERNAME
+
+# Keep container alive
+CMD tail -f /dev/null

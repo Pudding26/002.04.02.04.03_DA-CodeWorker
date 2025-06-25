@@ -1,4 +1,4 @@
-from app.utils.SQL.models.orm_BaseModel import orm_BaseModel
+from app.utils.common.app.utils.SQL.models.orm_BaseModel import orm_BaseModel
 
 from sqlalchemy import Column, String, Integer, Float, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB

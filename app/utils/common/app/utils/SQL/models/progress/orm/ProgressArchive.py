@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Float, Integer, DateTime
-from app.utils.SQL.models.orm_BaseModel import orm_BaseModel
+from app.utils.common.app.utils.SQL.models.orm_BaseModel import orm_BaseModel
 from datetime import datetime
 from typing import Optional
 

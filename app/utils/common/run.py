@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import os
 import logging
 
-from app.utils.logger.UvicornLoggingFilter import LOGGING_CONFIG  
+from app.utils.common.app.utils.logger.UvicornLoggingFilter import LOGGING_CONFIG  
 
 
 
@@ -32,3 +32,4 @@ if __name__ == "__main__":
         reload=True,
         log_config=LOGGING_CONFIG
     )
+

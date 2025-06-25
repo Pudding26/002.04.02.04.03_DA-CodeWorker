@@ -1,6 +1,6 @@
 from pathlib import Path
 from app.tasks.TaskBase import TaskBase
-from app.utils.rsync.RsyncUtils import RsyncUtils
+from app.utils.common.app.utils.rsync.RsyncUtils import RsyncUtils
 
 class TA05_A_SingleRsyncWorker(TaskBase):
     def setup(self):

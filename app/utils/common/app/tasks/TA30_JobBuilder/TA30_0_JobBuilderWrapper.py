@@ -16,28 +16,28 @@ from sqlalchemy import text, update, func, bindparam, String
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Session
 
-from app.utils.SQL.DBEngine import DBEngine
+from app.utils.common.app.utils.SQL.DBEngine import DBEngine
 
 from app.tasks.TaskBase import TaskBase
-from app.utils.SQL.SQL_Df import SQL_Df
-from app.utils.SQL.SQL_Dict import SQL_Dict
-from app.utils.SQL.models.production.api.api_WoodTableA import WoodTableA_Out
-from app.utils.SQL.models.production.api.api_WoodTableB import WoodTableB_Out
+from app.utils.common.app.utils.SQL.SQL_Df import SQL_Df
+from app.utils.common.app.utils.SQL.SQL_Dict import SQL_Dict
+from app.utils.common.app.utils.SQL.models.production.api.api_WoodTableA import WoodTableA_Out
+from app.utils.common.app.utils.SQL.models.production.api.api_WoodTableB import WoodTableB_Out
 
 
-from app.utils.SQL.models.production.api.api_WoodMaster import WoodMaster_Out
-from app.utils.SQL.models.production.api.api_WoodMasterPotential import WoodMasterPotential_Out
-from app.utils.SQL.models.jobs.api_DoEJobs import DoEJobs_Out
+from app.utils.common.app.utils.SQL.models.production.api.api_WoodMaster import WoodMaster_Out
+from app.utils.common.app.utils.SQL.models.production.api.api_WoodMasterPotential import WoodMasterPotential_Out
+from app.utils.common.app.utils.SQL.models.jobs.api_DoEJobs import DoEJobs_Out
 
-from app.utils.SQL.models.jobs.orm_WorkerJobs import orm_WorkerJobs
-
-
-from app.utils.SQL.models.production.api.api_ModellingResults import ModellingResults_Out
+from app.utils.common.app.utils.SQL.models.jobs.orm_WorkerJobs import orm_WorkerJobs
 
 
-from app.utils.dataModels.FilterModel.FilterModel import FilterModel
-from app.utils.dataModels.FilterModel.FilterModel import Border
-from app.utils.dataModels.Jobs.DoEJob import DoEJob
+from app.utils.common.app.utils.SQL.models.production.api.api_ModellingResults import ModellingResults_Out
+
+
+from app.utils.common.app.utils.dataModels.FilterModel.FilterModel import FilterModel
+from app.utils.common.app.utils.dataModels.FilterModel.FilterModel import Border
+from app.utils.common.app.utils.dataModels.Jobs.DoEJob import DoEJob
 
 
 from app.tasks.TA30_JobBuilder.TA30_A_ProviderJobBuilder import TA30_A_ProviderJobBuilder
@@ -46,7 +46,7 @@ from app.tasks.TA30_JobBuilder.TA30_C_ExtractorJobBuilder import TA30_C_Extracto
 #from app.tasks.TA30_JobBuilder.TA30_C_ModelerJobBuilder import TA30_C_ModelerJobBuilder
 
 
-#from app.utils.SQL.models.temp.api.SegmentationJobs_out import SegmentationJobs_out
+#from app.utils.common.app.utils.SQL.models.temp.api.SegmentationJobs_out import SegmentationJobs_out
 
 
 class TA30_0_JobBuilderWrapper(TaskBase):

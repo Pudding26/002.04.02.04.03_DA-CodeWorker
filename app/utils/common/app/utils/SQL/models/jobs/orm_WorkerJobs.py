@@ -1,5 +1,5 @@
-from app.utils.SQL.models.orm_BaseModel import orm_BaseModel
-from app.utils.SQL.DBEngine import DBEngine
+from app.utils.common.app.utils.SQL.models.orm_BaseModel import orm_BaseModel
+from app.utils.common.app.utils.SQL.DBEngine import DBEngine
 
 
 from sqlalchemy.orm import relationship

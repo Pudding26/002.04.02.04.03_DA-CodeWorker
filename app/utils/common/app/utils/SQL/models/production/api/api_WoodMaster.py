@@ -1,9 +1,9 @@
 from typing import Optional, List, ClassVar
 from datetime import datetime
-from app.utils.SQL.models.api_BaseModel import api_BaseModel
+from app.utils.common.app.utils.SQL.models.api_BaseModel import api_BaseModel
 
 
-from app.utils.SQL.models.production.orm.WoodMaster import WoodMaster  # Assuming this ORM class exists
+from app.utils.common.app.utils.SQL.models.production.orm.WoodMaster import WoodMaster  # Assuming this ORM class exists
 
 class WoodMaster_Out(api_BaseModel):
 

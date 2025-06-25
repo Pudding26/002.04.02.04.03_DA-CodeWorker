@@ -6,10 +6,10 @@ from memory_profiler import profile
 
 
 from app.tasks.TaskBase import TaskBase
-from app.utils.SQL.SQL_Df import SQL_Df
-from app.utils.mapping.YamlColumnMapper import YamlColumnMapper
+from app.utils.common.app.utils.SQL.SQL_Df import SQL_Df
+from app.utils.common.app.utils.mapping.YamlColumnMapper import YamlColumnMapper
 
-from app.utils.SQL.models.production.api.api_WoodTableA import WoodTableA_Out
+from app.utils.common.app.utils.SQL.models.production.api.api_WoodTableA import WoodTableA_Out
 
 class TA20_A_CreateWoodTableA(TaskBase):
     def setup(self) -> None:

@@ -5,11 +5,11 @@ import os
 from sqlalchemy.orm import Session
 
 from app.tasks.TaskBase import TaskBase
-from app.utils.controlling.TaskController import TaskController
-from app.utils.SQL.DBEngine import DBEngine
-from app.utils.mapping.YamlColumnMapper import YamlColumnMapper
-from app.utils.SQL.models.production.orm.DS09 import DS09
-from app.utils.SQL.SQL_Df import SQL_Df
+from app.utils.common.app.utils.controlling.TaskController import TaskController
+from app.utils.common.app.utils.SQL.DBEngine import DBEngine
+from app.utils.common.app.utils.mapping.YamlColumnMapper import YamlColumnMapper
+from app.utils.common.app.utils.SQL.models.production.orm.DS09 import DS09
+from app.utils.common.app.utils.SQL.SQL_Df import SQL_Df
 
 if os.getenv("DEBUG_MODE") == "True":
     import memory_profiler

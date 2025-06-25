@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Integer
-from app.utils.SQL.models.orm_BaseModel import orm_BaseModel
+from app.utils.common.app.utils.SQL.models.orm_BaseModel import orm_BaseModel
 
 class DS12(orm_BaseModel):
     __tablename__ = "DS12"
