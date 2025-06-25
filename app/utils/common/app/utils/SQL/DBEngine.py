@@ -11,6 +11,7 @@ _engine_cache = {}  # Module-level cache, To allow to reuse engine connections
 
 load_dotenv()
 
+
 class DBEngine:
     def __init__(self, db_key: str):
         """
@@ -55,6 +56,7 @@ class DBEngine:
 
         if not all([user, pwd, host, port, db]):
             raise ValueError(f"❌ Missing env vars for {db_key} DB")
+
 
         return f"postgresql://{user}:{pwd}@{host}:{port}/{db}"
     

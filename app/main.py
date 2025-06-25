@@ -3,6 +3,8 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.utils.lobby.LobbyHandler import LobbyHandler
+from app.utils.common.app.utils.logger.loggingWrapper import LoggingHandler
+
 from contextlib import asynccontextmanager
 
 # Instantiate the handler
@@ -14,8 +16,14 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(delayed_start())  
     yield
     # optional shutdown code here
+
+
 logging.getLogger("watchfiles.main").setLevel(logging.WARNING)
 app = FastAPI(lifespan=lifespan)
+
+
+logger = logging.getLogger(__name__)
+LoggingHandler(logging_level="DEBUG-2")
 
 # CORS setup
 app.add_middleware(
@@ -31,5 +39,6 @@ async def delayed_start(delay_seconds: float = 2.0):
     await asyncio.sleep(delay_seconds)
     lobby_handler.start()
     print(f"✅ LobbyHandler started after {delay_seconds}s delay")
+
 
 

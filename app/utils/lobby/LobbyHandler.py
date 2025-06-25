@@ -60,7 +60,7 @@ class LobbyHandler:
         Fetch all jobs for the given job_type with status=in_progress.
         """
         filter_model = FilterModel.from_human_filter(
-            {"contains": {"status": "in_progress", "job_type": job_type}}
+            {"contains": {"status": "ready", "job_type": job_type}}
         )
         return WorkerJobs_Out.fetch(
             filter_model=filter_model,
