@@ -1,7 +1,14 @@
 from app.utils.common.app.utils.dataModels.Jobs.ExtractorJob import ExtractorJob, ExtractorJobInput
+
+
 from app.utils.common.app.tasks.TA41_ImageSegmentation.FeatureExtractor import FeatureExtractor
+from app.tasks.TA51_Extractor.TA51_B_FeatureProcessor_GPU import TA51_B_FeatureProcessor_GPU
 
 
+import logging
+import pandas as pd
+import cupy as cp
+import time
 
 class TA51_0_ExtractorOrchestrator:
     """
@@ -69,13 +76,69 @@ class TA51_0_ExtractorOrchestrator:
     
     def run_pipeline(self):
 
-        fe = FeatureExtractor() 
+        # -----------------------------------------------------------------------------
+        # SET-UP
+        # -----------------------------------------------------------------------------
+        fe          = FeatureExtractor()
+        feature_proc = TA51_B_FeatureProcessor_GPU()
 
-        for job in self.jobs:
+        FLUSH_EVERY_STACKS = 10  # tune
+        shot_tables: dict[str, list[pd.DataFrame]] = {}
 
+        # timers
+        extract_ms  = 0.0  # cumulative feature-extraction time
+        bin_ms      = 0.0  # cumulative binning / summarising time
+        shots_done  = 0
+        stacks_done = 0
+
+        # -----------------------------------------------------------------------------
+        # MAIN LOOP
+        # -----------------------------------------------------------------------------
+        for job_no, job in enumerate(self.jobs):
+            stack_id   = job.input.stackID
             mask_stack = job.input.mask
-            for mask in mask_stack:
-                # Apply the feature extractor to each mask
-                feature_df = fe.apply_one(mask, connectivity = 2, use_gpu=True)
 
+            for shot_no, mask in enumerate(mask_stack, start=1):
+                t0 = time.perf_counter()
+                df = fe.apply_one(mask, connectivity=2, use_gpu=True)
+                cp.cuda.Device(0).synchronize()        # ensure GPU finished
+                extract_ms += (time.perf_counter() - t0) * 1000
 
+                # annotate
+                df["stackID"] = stack_id
+                df["shotID"]  = f"{stack_id}_{shot_no:03d}"
+                shot_tables.setdefault(stack_id, []).append(df)
+                shots_done += 1
+
+            stacks_done += 1
+
+            # flush in blocks to control VRAM
+            if len(shot_tables) >= FLUSH_EVERY_STACKS:
+                t0 = time.perf_counter()
+                for sid, dfs in shot_tables.items():
+                    result_df = feature_proc.process(stackID=sid, feature_tables=dfs)
+                    result_df.to_parquet(f"/data/features/{sid}.parquet")
+                cp.get_default_memory_pool().free_all_blocks()
+                bin_ms += (time.perf_counter() - t0) * 1000
+                shot_tables.clear()
+
+        # final flush
+        if shot_tables:
+            t0 = time.perf_counter()
+            for sid, dfs in shot_tables.items():
+                result_df = feature_proc.process(stackID=sid, feature_tables=dfs)
+                result_df.to_parquet(f"/data/features/{sid}.parquet")
+            cp.get_default_memory_pool().free_all_blocks()
+            bin_ms += (time.perf_counter() - t0) * 1000
+            shot_tables.clear()
+
+        # -----------------------------------------------------------------------------
+        # SUMMARY
+        # -----------------------------------------------------------------------------
+        print(
+            f"🟢   Finished {shots_done:,} shots in {stacks_done:,} stacks\n"
+            f"    ├─ Extraction: {extract_ms/1e3:8.2f} s total "
+            f"({extract_ms/shots_done:6.2f} ms/shot)\n"
+            f"    └─ Binning   : {bin_ms/1e3:8.2f} s total "
+            f"({bin_ms/stacks_done:6.2f} ms/stack)"
+        )

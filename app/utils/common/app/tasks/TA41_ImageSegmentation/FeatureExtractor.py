@@ -137,3 +137,4 @@ class FeatureExtractor:
         xp.cuda.runtime.deviceSynchronize()
         xp.get_default_memory_pool().free_all_blocks()
         return labelled, props
+
