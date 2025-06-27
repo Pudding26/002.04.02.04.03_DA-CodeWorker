@@ -1,0 +1,41 @@
+PP01:
+  name: "StandardScaler Preprocessing"
+  description: "Use standardization with mean and std on all features."
+
+  method: "scaling"
+  scaling:
+    submethod: "standardization"
+    standardization:
+      subsubmethod: "StandardScaler"
+      StandardScaler:
+        with_mean: true
+        with_std: true
+      MinMaxScaler: null
+
+PP02:
+  name: "MinMaxScaler Preprocessing"
+  description: "Min-Max scale features to the [0, 1] range."
+
+  method: "scaling"
+  scaling:
+    submethod: "standardization"
+    standardization:
+      subsubmethod: "MinMaxScaler"
+      MinMaxScaler:
+        min: 0.0
+        max: 1.0
+        clip: true
+      StandardScaler: null
+
+PP03:
+  name: "Skip Scaling"
+  description: "No scaling or normalization applied."
+
+  method: "none"
+  scaling: null
+
+
+MM01:
+  method: "distance"
+  distance:
+    metric: "cosine"
