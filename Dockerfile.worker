@@ -1,15 +1,18 @@
-FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+FROM rapidsai/base:25.06-cuda12.0-py3.10
 
-# Accept UID/GID as build args
-ARG USERNAME=vscode
-ARG UID=1000
-ARG GID=1000
+
+## Accept UID/GID as build args
+#ARG USERNAME=vscode
+#ARG UID=1000
+#ARG GID=1000
 
 # Set up user
-RUN groupadd --gid $GID $USERNAME \
-    && useradd --uid $UID --gid $GID -m $USERNAME -s /bin/bash \
-    && apt-get update && apt-get install -y sudo \
-    && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+#RUN groupadd --gid $GID $USERNAME \
+#    && useradd --uid $UID --gid $GID -m $USERNAME -s /bin/bash \
+#    && apt-get update && apt-get install -y sudo \
+#    && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+USER root
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -18,13 +21,13 @@ RUN apt-get update && apt-get install -y \
 
 # Set up working directory with correct ownership
 WORKDIR /workspace
-RUN chown $USERNAME:$USERNAME /workspace
+#RUN chown $USERNAME:$USERNAME /workspace
 
 # Install requirements
 COPY requirements.txt /workspace/requirements.txt
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-USER $USERNAME
+#USER $USERNAME
 
 # Keep container alive
 CMD tail -f /dev/null

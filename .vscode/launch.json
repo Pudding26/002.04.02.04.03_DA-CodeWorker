@@ -1,16 +1,15 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-      {
-        "name": "Debug Worker (run.py)",
-        "type": "debugpy",
-        "request": "launch",
-        "module": "run",
-        "cwd": "${workspaceFolder}",
-        "envFile": "${workspaceFolder}/.env",
-        "justMyCode": true,
-        "console": "integratedTerminal"
-      }
-    ]
-  }
-  
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Worker (run.py)",
+      "type": "python",
+      "request": "launch",
+      "module": "run",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "justMyCode": true,
+      "console": "integratedTerminal"
+    }
+  ]
+}

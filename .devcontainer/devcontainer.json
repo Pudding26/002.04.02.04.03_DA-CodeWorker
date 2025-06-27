@@ -11,10 +11,11 @@
     "ms-python.python",
     "ms-toolsai.jupyter",
     "ms-python.debugpy",
-    "ms-toolsai.datawrangler"
+    "ms-toolsai.datawrangler",
+    "dvirtz.parquet-viewer"
   ],
   "postCreateCommand": "pip install -r requirements.txt",
-  "remoteUser": "vscode",
+  "remoteUser": "rapids",
   "mountWorkspaceGitRoot": false,
   "runArgs": ["--gpus", "all"]  // <- ADD THIS
 }

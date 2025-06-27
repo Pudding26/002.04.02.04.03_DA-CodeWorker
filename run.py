@@ -1,3 +1,7 @@
+
+import sys
+print("Python executable:", sys.executable)
+
 import uvicorn
 import os
 from dotenv import load_dotenv

@@ -1,0 +1,12 @@
+timestamp,num_masks,image_height,image_width,props_extracted,copy_time_ms,gpu_labeling_regionprops_time_ms,cudf_concat_time_ms,total_time_ms
+2025-06-26T05:23:08.417255,16,768,1024,label;area;major_axis_length;solidity;centroid,0.0005399997462518513,16690.536460000203,254.75705500002732,16945.294054999977
+2025-06-26T05:24:16.256387,32,768,1024,label;area;major_axis_length;solidity;centroid,0.0005050001163908746,33983.2020419999,388.24753400012924,34371.45008100015
+2025-06-26T05:27:10.818765,32,768,1024,label;area;major_axis_length;solidity;centroid;eccentricity,0.0006239997674128972,33209.441101000266,359.6271209999031,33569.06884599994
+2025-06-26T05:32:29.451926,32,768,1024,label;area;major_axis_length;solidity;centroid;eccentricity;feret_diameter_max;moments_hu;perimeter;orientation,0.0006199998097144999,158687.87598900008,804.7089629999391,159492.58557199984
+2025-06-26T05:46:31.023704,16,768,1024,label;area;major_axis_length;solidity;centroid;eccentricity;feret_diameter_max;moments_hu;perimeter;orientation,0.0006719997145410161,70785.37856399998,448.5473849999835,71233.92662099969
+2025-06-26T06:19:36.974612,16,768,1024,label;area;major_axis_length;solidity;centroid;eccentricity;feret_diameter_max;moments_hu;perimeter;orientation,0.0008400002116104588,83717.84545300034,680.6001749991992,84398.44646799975
+2025-06-26T08:12:19.669262,16,768,1024,label;area;major_axis_length;solidity;centroid;eccentricity;feret_diameter_max;moments_hu;perimeter;orientation,0.00047000139602459967,138514.66134600015,691.3902519991098,139206.05206800066
+2025-06-26T08:18:49.161633,16,768,1024,label;area;major_axis_length;solidity;centroid;eccentricity;feret_diameter_max;moments_hu;perimeter;orientation,0.0,33324.22067799962,3.8962589987932006,33539.91098400002
+2025-06-26T08:20:14.974603,16,768,1024,label;area;major_axis_length;solidity;centroid;eccentricity;feret_diameter_max;moments_hu;perimeter;orientation,0.0007159997039707378,85240.49957200077,418.1443670004228,85658.6446550009
+2025-06-26T11:52:16.202012,16,768,1024,label;area;major_axis_length;solidity;centroid;eccentricity;feret_diameter_max;moments_hu;perimeter;orientation,0.0,52188.07361400104,4.396216998429736,52450.969543999236
+2025-06-26T11:55:01.518892,16,768,1024,label;area;major_axis_length;solidity;centroid;eccentricity;feret_diameter_max;moments_hu;perimeter;orientation,0.0006609989213757217,163965.18711799945,961.3884960017458,164926.57627500012
