@@ -10,6 +10,19 @@ from app.tasks.TA52_Modeler.TA52_B_Modeler import TA52_B_Modeler
 from app.utils.common.app.utils.dataModels.Jobs.ModelerJob import ModelerJob, ModelerJobInput, ModelerAttrs
 
 
+
+
+
+from app.utils.common.app.utils.dataModels.FilterModel.FilterModel import FilterModel
+
+from app.utils.common.app.utils.dataModels.Jobs.ModelerJob import ModelerJob
+from app.utils.common.app.utils.SQL.models.production.api_SegmentationResults import SegmentationResults_Out
+
+
+### ---- utils ---- ###
+from app.tasks.TA52_Modeler.utils.StackDataLoader import StackDataLoader
+
+
 class TA52_0_ModelerOrchestrator:
     def run(self, job_df_raw: pd.DataFrame):
         if job_df_raw.empty:
@@ -33,6 +46,7 @@ class TA52_0_ModelerOrchestrator:
             Thread(target=self.store_results, name="SaverThread")
         ]
 
+
         for t in threads:
             t.start()
         for t in threads:
@@ -42,11 +56,21 @@ class TA52_0_ModelerOrchestrator:
 
     def load_jobs(self):
         job_list = self.convert_raw_dataframe(self.raw_input_df)
-        logging.debug5(f"[LOADER] Queuing {len(job_list)} ModelerJob objects.")
+        data_loader = StackDataLoader(api_model_cls=SegmentationResults_Out)
 
-        for job in job_list:
-            self.input_queue.put(job)
-        self.input_queue.put(None)  # Sentinel
+        for i, job in enumerate(job_list):
+            try:
+                job.attrs.raw_data = data_loader.load_for_job(job.input.stackIDs)
+
+                if i % 10 == 0 or i == len(job_list) - 1:
+                    logging.debug2(f"[LOADER] Enriched job {i+1}/{len(job_list)} with raw_data")
+
+                self.input_queue.put(job)
+
+            except Exception as e:
+                logging.warning(f"[LOADER WARNING] Failed to attach raw_data to Job {job.job_uuid}: {str(e)}")
+
+        self.input_queue.put(None)
 
     def execute_jobs(self):
         job_count = 0
@@ -147,7 +171,11 @@ class TA52_0_ModelerOrchestrator:
                     updated=row["updated"],
                     parent_job_uuids=row["parent_job_uuids"],
                     input=inp,
-                    attrs=ModelerAttrs()
+                    attrs=ModelerAttrs(
+                        preprocessed_data=None,  # Will be set later
+                        raw_data=None,  # Will be set later
+                        model_results=None  # Will be set later
+                    )
                 )
                 jobs.append(job)
 

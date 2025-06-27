@@ -161,6 +161,50 @@ class FilterModel(BaseModel):
     def from_human_filter(human_filter: dict) -> FilterModel:
         """
         Construct a FilterModel from a human-friendly filter dictionary.
+
+        The expected dictionary structure is:
+        {
+            "contains": {
+                "column1": value_or_list_or_dict,
+                ...
+            },
+            "notcontains": {
+                "column2": value_or_list_or_dict,
+                ...
+            },
+            "is_range": ["column3", "column4"],
+            "all_OR": True | False
+        }
+
+        Keys:
+            - contains: Maps column names to values (or lists, or dicts with "or"/"and" keys) the data should match.
+            - notcontains: Same as contains, but conditions will be negated.
+            - is_range: Columns that should interpret values as range (BETWEEN).
+            - all_OR: If True, combine conditions in the group using OR logic; else AND.
+
+        Value formats:
+            - Single value: e.g. "foo"
+            - List of values: e.g. ["foo", "bar"]
+            - Dict with:
+                - "or": list of values or ranges => combine with OR
+                - "and": list of values => combine with AND
+
+        Returns:
+            FilterModel: A filter model with the parsed conditions and a single group.
+
+        Example:
+            human_filter = {
+                "contains": {
+                    "category": {"or": ["A", "B"]},
+                    "price": [[10, 20], [30, 40]]
+                },
+                "notcontains": {
+                    "status": "inactive"
+                },
+                "is_range": ["price"],
+                "all_OR": False
+            }
+            model = FilterModel.from_human_filter(human_filter)
         """
         contains = human_filter.get("contains", {})
         notcontains = human_filter.get("notcontains", {})
@@ -172,26 +216,27 @@ class FilterModel(BaseModel):
             for col, val in section.items():
                 border = Border.INCLUDE if col in is_range else None
 
-                # Normalize val to expected format
+                # Normalize string or scalar to list
                 if isinstance(val, str) or not isinstance(val, (list, dict)):
                     val = [val]
 
                 if isinstance(val, dict):
                     if "or" in val:
-                        for or_item in val["or"]:
-                            if isinstance(or_item, list) and len(or_item) == 2 and col in is_range:
-                                conds.append(Condition(
-                                    column=col,
-                                    op=Op.NOT_BETWEEN if negated else Op.BETWEEN,
-                                    value=[tuple(or_item)],
-                                    border=border
-                                ))
-                            else:
-                                conds.append(Condition(
-                                    column=col,
-                                    op=Op.NOT_IN if negated else Op.IN_,
-                                    value=or_item
-                                ))
+                        if all(isinstance(item, list) and len(item) == 2 for item in val["or"]) and col in is_range:
+                            # Treat as multiple BETWEEN ranges
+                            conds.append(Condition(
+                                column=col,
+                                op=Op.NOT_BETWEEN if negated else Op.BETWEEN,
+                                value=[tuple(pair) for pair in val["or"]],
+                                border=border
+                            ))
+                        else:
+                            # Treat as a single IN/NOT_IN with the list of values
+                            conds.append(Condition(
+                                column=col,
+                                op=Op.NOT_IN if negated else Op.IN_,
+                                value=val["or"]
+                            ))
                     elif "and" in val:
                         conds.extend([
                             Condition(
@@ -201,15 +246,14 @@ class FilterModel(BaseModel):
                             ) for v in val["and"]
                         ])
                 else:
-                    # Simple value list
                     for v in val:
                         conds.append(Condition(
                             column=col,
                             op=Op.NOT_IN if negated else Op.IN_,
                             value=[v]
                         ))
-
             return conds
+
 
         conditions = parse_conditions(contains, negated=False) + parse_conditions(notcontains, negated=True)
         group = ConditionGroup(logic=global_logic, conditions=conditions)

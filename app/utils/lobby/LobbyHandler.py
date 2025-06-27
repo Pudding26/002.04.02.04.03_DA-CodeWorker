@@ -39,13 +39,12 @@ class LobbyHandler:
         Factory method to return the correct orchestrator for each job type.
         """
         match job_type:
-            case "extractor":
-                from app.tasks.TA51_Extractor.TA51_0_ExtractorOrchestrator import TA51_0_ExtractorOrchestrator
-                return TA51_0_ExtractorOrchestrator()
+            #case "extractor":
+            #    from app.tasks.TA51_Extractor.TA51_0_ExtractorOrchestrator import TA51_0_ExtractorOrchestrator
+            #    return TA51_0_ExtractorOrchestrator()
             case "modeler":
-                return None
-                from app.tasks.TA51_Modeler.TA51_1_ModelerOrchestrator import TA51_1_ModelerOrchestrator
-                return TA51_1_ModelerOrchestrator()
+                from app.tasks.TA52_Modeler.TA52_0_ModelerOrchestrator import TA52_0_ModelerOrchestrator
+                return TA52_0_ModelerOrchestrator()
             case "validator":
                 # Implement your validator orchestrator here
                 return None
