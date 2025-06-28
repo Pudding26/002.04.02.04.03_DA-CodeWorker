@@ -84,6 +84,9 @@ class TA52_0_ModelerOrchestrator:
         job_count = 0
         total_jobs = self.input_queue.qsize()
         log_interval = 10
+        self.stats_list = []
+
+
 
         while True:
             try:
@@ -95,12 +98,20 @@ class TA52_0_ModelerOrchestrator:
 
                 try:
                     self.preprocess_job(job)
-                    self.model_job(job)
+                    #self.model_job(job)
                     self.output_queue.put(job)
+                    
+                    if hasattr(job, "stats"):
+                        self.stats_list.append(job.stats.copy())
+
+
+                    if len(self.stats_list) % 5 == 0:
+                        self._print_summary_df(self.stats_list)
+
 
                 except Exception as e:
                     error_msg = traceback.format_exc()
-                    logging.error(f"[ERROR] Job {job.job_uuid} failed:\n{error_msg}")
+                    logging.error(f"[ERROR] Job {job.job_uuid} with context {job.context} failed:\n{error_msg}")
                     self.error_queue.put((job, e, error_msg))
 
                 job_count += 1
@@ -111,8 +122,10 @@ class TA52_0_ModelerOrchestrator:
 
                 self.input_queue.task_done()
 
+
             except Empty:
                 continue
+
 
     def store_results(self):
         stored_count = 0
@@ -202,6 +215,15 @@ class TA52_0_ModelerOrchestrator:
         # Load config for actual injection
         with open("app/config/temp_modelcofig.yaml", "r") as f:
             config_yaml = yaml.safe_load(f)
+            def purify_none(value):
+                if isinstance(value, dict):
+                    return {k: purify_none(v) for k, v in value.items()}
+                elif isinstance(value, list):
+                    return [purify_none(v) for v in value]
+                elif value in ("None", "none", "null", "Null"):
+                    return None
+                return value
+            config_yaml = purify_none(config_yaml)
 
         jobs = []
         total_jobs = len(job_df_raw)
@@ -225,6 +247,7 @@ class TA52_0_ModelerOrchestrator:
                     metricModelNo=mm_key,
                 )
 
+
                 job = ModelerJob(
                     job_uuid=row["job_uuid"],
                     job_type=row["job_type"],
@@ -242,6 +265,7 @@ class TA52_0_ModelerOrchestrator:
                     )
                 )
                 jobs.append(job)
+
 
                 if i % log_interval == 0 or i == total_jobs - 1:
                     logging.debug2(f"[LOADER] Parsed {i+1}/{total_jobs} jobs")
@@ -293,3 +317,47 @@ class TA52_0_ModelerOrchestrator:
                     exploded_rows.append(new_row)
 
         return pd.DataFrame(exploded_rows)
+
+
+
+    def _print_summary_df(self, stats_list: List[Dict]):
+        if not stats_list:
+            logging.debug2("[SUMMARY] No job stats to print.")
+            return
+
+        summary_df = self._create_summary_df(stats_list)
+        logging.debug2("\n" + summary_df.to_string(index=False))
+
+    def _create_summary_df(self, stats_list: List[Dict]) -> pd.DataFrame:
+        df = pd.DataFrame([entry["preprocessing"] for entry in stats_list])
+
+        if "shape_after" in df.columns:
+            df["samples"] = df["shape_after"].apply(lambda s: s[0] if isinstance(s, list) else None)
+
+        # Group by method, submethod, subsubmethod
+        summary_df = df.groupby(["method", "submethod", "subsubmethod"], as_index=False).agg(
+            jobs=("method", "count"),
+            avg_samples=("samples", "mean"),
+            total_samples=("samples", "sum"),
+            avg_time_s=("total_s", "mean"),
+            total_time_s=("total_s", "sum"),
+
+            # Optional: average of sub-timings
+            avg_load_s=("load_config_s", "mean"),
+            avg_split_s=("split_columns_s", "mean"),
+            avg_expand_s=("expand_data_s", "mean"),
+            avg_core_s=("preprocess_core_s", "mean"),
+            avg_post_s=("postprocess_s", "mean"),
+            avg_assign_s=("final_assignment_s", "mean"),
+        )
+
+        summary_df["samples_per_s"] = (summary_df["total_samples"] / summary_df["total_time_s"]).round(2)
+
+        # Round time columns
+        for col in ["avg_time_s", "total_time_s",
+                    "avg_load_s", "avg_split_s", "avg_expand_s",
+                    "avg_core_s", "avg_post_s", "avg_assign_s"]:
+            summary_df[col] = summary_df[col].round(2)
+
+        return summary_df
+

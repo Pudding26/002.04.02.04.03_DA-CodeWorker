@@ -28,7 +28,7 @@ class MinMaxScalerParams(BaseModel):
     """
     min: float = Field(default=0.0, description="Minimum value after scaling")
     max: float = Field(default=1.0, description="Maximum value after scaling")
-    clip: bool = Field(default=False, description="Whether to clip values outside the [min, max] range")
+    #clip: bool = Field(default=False, description="Whether to clip values outside the [min, max] range") #ONLY FOR CPU
 
 
 class StandardScalerParams(BaseModel):

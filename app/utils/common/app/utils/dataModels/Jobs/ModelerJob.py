@@ -21,6 +21,7 @@ class ModelerJob(BaseJob):
     input: ModelerJobInput
     attrs: ModelerAttrs
     stats: Dict[str, Any] = Field(default_factory=dict)
+    context: Optional[Dict[str, Any]] = None
 
     model_config = ConfigDict(extra="forbid")
 

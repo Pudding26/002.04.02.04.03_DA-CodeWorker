@@ -10,7 +10,7 @@ PP01:
       StandardScaler:
         with_mean: true
         with_std: true
-      MinMaxScaler: null
+      MinMaxScaler: None
 
 PP02:
   name: "MinMaxScaler Preprocessing"
@@ -25,14 +25,98 @@ PP02:
         min: 0.0
         max: 1.0
         clip: true
-      StandardScaler: null
+      StandardScaler: None
 
 PP03:
   name: "Skip Scaling"
   description: "No scaling or normalization applied."
 
-  method: "none"
-  scaling: null
+  method: None
+  scaling: None
+
+
+PP04:
+  name: "Random Oversampling"
+  description: "Duplicate minority class samples using shotID scope."
+  method: "resampling"
+  resampling:
+    submethod: "oversampling"
+    oversampling:
+      subsubmethod: "RandomOverSampler"
+      RandomOverSampler:
+        scope: "shotID"
+        random_state: 42
+      SMOTESampler: None
+    undersampling: None
+    bootstrapping: None
+    hybrid: None
+
+PP05:
+  name: "SMOTE Oversampling"
+  description: "SMOTE interpolation based on shotID labels, using GPU k-NN."
+  method: "resampling"
+  resampling:
+    submethod: "oversampling"
+    oversampling:
+      subsubmethod: "SMOTESampler"
+      SMOTESampler:
+        scope: "shotID"
+        k_neighbors: 5
+        sampling_strategy: "auto"
+        random_state: 42
+      RandomOverSampler: None
+    undersampling: None
+    bootstrapping: None
+    hybrid: None
+
+PP06:
+  name: "Random Undersampling"
+  description: "Remove samples from majority classes using shotID scope."
+  method: "resampling"
+  resampling:
+    submethod: "undersampling"
+    undersampling:
+      subsubmethod: "RandomUnderSampler"
+      RandomUnderSampler:
+        scope: "shotID"
+        random_state: 42
+    oversampling: None
+    bootstrapping: None
+    hybrid: None
+
+PP07:
+  name: "Hybrid Resampling"
+  description: "Balance all classes to median size using over/under sampling."
+  method: "resampling"
+  resampling:
+    submethod: "hybrid"
+    hybrid:
+      subsubmethod: "HybridSampler"
+      HybridSampler:
+        scope: "shotID"
+        strategy: "median"
+        target_size: None
+        random_state: 42
+    oversampling: None
+    undersampling: None
+    bootstrapping: None
+
+PP08:
+  name: "Bootstrap Sampling"
+  description: "Sample with replacement from the full dataset."
+  method: "resampling"
+  resampling:
+    submethod: "bootstrapping"
+    bootstrapping:
+      subsubmethod: "BootstrapSampler"
+      BootstrapSampler:
+        scope: "shotID"
+        n_samples: None
+        random_state: 42
+    oversampling: None
+    undersampling: None
+    hybrid: None
+
 
 
 MM01:
