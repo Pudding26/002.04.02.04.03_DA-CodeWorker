@@ -9,11 +9,17 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 from sqlalchemy import DateTime
 
+from app.utils.common.app.utils.SQL.models.jobs.orm_JobLink import orm_JobLink
+
 
 from sqlalchemy import update
 from contextlib import contextmanager
 
 class orm_WorkerJobs(orm_BaseModel):
+    from sqlalchemy.orm import relationship
+    print("🧪 orm_WorkerJobs loaded at", __name__)
+
+
     __tablename__ = "WorkerJobs"
 
     job_uuid = Column(String, primary_key=True)

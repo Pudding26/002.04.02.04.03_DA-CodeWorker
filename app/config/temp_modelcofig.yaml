@@ -44,7 +44,7 @@ PP04:
     oversampling:
       subsubmethod: "RandomOverSampler"
       RandomOverSampler:
-        scope: "shotID"
+        scope: "genus"
         random_state: 42
       SMOTESampler: None
     undersampling: None

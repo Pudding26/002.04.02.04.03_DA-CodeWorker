@@ -47,7 +47,7 @@ class TA51_A_FeatureExtractor_GPU:
 
         # Drop centroid columns
         df_full = df_full.drop(
-            columns=[c for c in df_full.columns if c.startswith("centroid")]
+            columns=[c for c in df_full.columns if c.startswith("centroid")]"stackID"
         )
 
         # Split into one dataframe per mask

@@ -49,6 +49,8 @@ class ModelerJobInput(BaseModel):
     job_No: Optional[int] = None
     preProcessingNo: str
     metricModelNo: str
+    scope: Optional[str] = None # Defines the lowest taxonmic hierachy that is used during resampling and modelling for clustering the data
+    index_col: Optional[int] = None  # Integer represantiation of the index col in the encoded data
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -57,6 +59,8 @@ class ModelerAttrs(BaseModel):
     raw_data: Optional[Any] = None  # pandas.DataFrame
     preProcessed_data: Optional[Any] = None  # cupy DataFrame or np/cupy array
     model_results: Optional[Any] = None  # pandas.DataFrame
+    data_num: Optional[Any] = None  # cupy DataFrame or np/cupy array
+    encoder: Optional[Any] = None
 
 
 

@@ -269,13 +269,15 @@ class api_BaseModel(BaseModel):
             if stream:
                 result = session.execute(stmt)
                 rowcount = getattr(builder, "rowcount", None)
+                subset_model = cls.__pydantic_model_for_columns__(columns)
                 data = [
-                    cls.model_validate(r._mapping).model_dump()
+                    subset_model.model_validate(r._mapping).model_dump()
                     for r in tqdm(result.yield_per(5000), desc="stream", total=rowcount)
                 ]
             else:
+                subset_model = cls.__pydantic_model_for_columns__(columns)
                 data = [
-                    cls.model_validate(r._mapping).model_dump()
+                    subset_model.model_validate(r._mapping).model_dump()
                     for r in session.execute(stmt).all()
                 ]
 
@@ -439,6 +441,35 @@ class api_BaseModel(BaseModel):
                 dtype_map[name] = object  # fallback
 
         return dtype_map
+
+
+
+    @classmethod
+    def __pydantic_model_for_columns__(cls, selected_columns: list[str]):
+        """
+        Dynamically create a Pydantic model with only the selected columns.
+        """
+        from pydantic import create_model
+
+        # fallback to full model
+        if not selected_columns:
+            return cls
+
+        # Pull out just the selected fields
+        field_definitions = {
+            k: (cls.model_fields[k].annotation, cls.model_fields[k].default)
+            for k in selected_columns
+            if k in cls.model_fields
+        }
+
+        SubModel = create_model(
+            f"{cls.__name__}Subset",
+            __base__=cls,
+            **field_definitions
+        )
+        return SubModel
+
+
 
 ####### DEPRECATED METHODS ########
 

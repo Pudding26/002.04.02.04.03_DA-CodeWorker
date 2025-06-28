@@ -22,8 +22,9 @@ class orm_JobLink(orm_BaseModel):
     Association-object pattern.
     We don’t declare a FK on child_uuid because it could live in any job table.
     """
-    __tablename__  = "jobLink"
+    __tablename__ = "jobLink"
 
+    print("✅ orm_JobLink loaded at", __name__)
 
     parent_uuid = Column(String, ForeignKey("DoEJobs.job_uuid", ondelete="CASCADE"), primary_key=True)
     child_uuid = Column(String, ForeignKey("WorkerJobs.job_uuid", ondelete="CASCADE"), primary_key=True)

@@ -329,12 +329,21 @@ class TA52_0_ModelerOrchestrator:
         logging.debug2("\n" + summary_df.to_string(index=False))
 
     def _create_summary_df(self, stats_list: List[Dict]) -> pd.DataFrame:
+        import pandas as pd
+
+        # Extract preprocessing stats only
         df = pd.DataFrame([entry["preprocessing"] for entry in stats_list])
 
+        # Extract row count from final shape
         if "shape_after" in df.columns:
             df["samples"] = df["shape_after"].apply(lambda s: s[0] if isinstance(s, list) else None)
 
-        # Group by method, submethod, subsubmethod
+        # Extract row/column ratio change
+        if "shape_change" in df.columns:
+            df["row_ratio"] = df["shape_change"].apply(lambda r: r[0] if isinstance(r, list) else None)
+            df["col_ratio"] = df["shape_change"].apply(lambda r: r[1] if isinstance(r, list) and len(r) > 1 else None)
+
+        # Group by method/submethod/subsubmethod and compute summaries
         summary_df = df.groupby(["method", "submethod", "subsubmethod"], as_index=False).agg(
             jobs=("method", "count"),
             avg_samples=("samples", "mean"),
@@ -349,15 +358,25 @@ class TA52_0_ModelerOrchestrator:
             avg_core_s=("preprocess_core_s", "mean"),
             avg_post_s=("postprocess_s", "mean"),
             avg_assign_s=("final_assignment_s", "mean"),
+
+            # NEW: shape change metrics
+            avg_row_ratio=("row_ratio", "mean"),
+            avg_col_ratio=("col_ratio", "mean"),
         )
 
+        # Derived metric: throughput
         summary_df["samples_per_s"] = (summary_df["total_samples"] / summary_df["total_time_s"]).round(2)
 
-        # Round time columns
-        for col in ["avg_time_s", "total_time_s",
-                    "avg_load_s", "avg_split_s", "avg_expand_s",
-                    "avg_core_s", "avg_post_s", "avg_assign_s"]:
-            summary_df[col] = summary_df[col].round(2)
+        # Round numeric columns
+        for col in [
+            "avg_time_s", "total_time_s", "samples_per_s",
+            "avg_load_s", "avg_split_s", "avg_expand_s",
+            "avg_core_s", "avg_post_s", "avg_assign_s",
+            "avg_row_ratio", "avg_col_ratio"
+        ]:
+            if col in summary_df.columns:
+                summary_df[col] = summary_df[col].round(2)
 
         return summary_df
+
 

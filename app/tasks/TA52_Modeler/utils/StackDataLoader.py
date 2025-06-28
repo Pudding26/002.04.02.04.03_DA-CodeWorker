@@ -4,6 +4,9 @@ import pandas as pd
 
 from app.utils.common.app.utils.dataModels.FilterModel.FilterModel import FilterModel
 
+from app.utils.common.app.utils.SQL.models.production.api.api_WoodMasterPotential import WoodMasterPotential_Out
+
+
 
 class StackDataLoader:
     def __init__(self, api_model_cls):
@@ -38,7 +41,11 @@ class StackDataLoader:
                 logging.warning(f"[STACK FETCH] No segmentation data returned for: {uncached_ids}")
             else:
                 df_wide = self.reshape_segmentation_long_to_wide(df_long)
+                df_wide["sampleID"] = df_wide["stackID"].str.split("_").apply(lambda parts: "_".join(parts[:-1]))
+                index_cols = self.get_index_columns(set(df_wide["sampleID"]))
+                df_wide = pd.merge(df_wide, index_cols, on=["sampleID"], how="left")
 
+                
                 self._wide_cache = (
                     pd.concat([self._wide_cache, df_wide], axis=0, ignore_index=True)
                     .drop_duplicates(subset=["shotID", "stackID"])
@@ -102,6 +109,32 @@ class StackDataLoader:
         df_combined.columns = [str(col) for col in df_combined.columns]
 
         return df_combined
+
+
+    @staticmethod
+    def get_index_columns(stack_IDs: set) -> pd.DataFrame:
+        """
+        Fetches index columns for given stack IDs from WoodMasterPotential_Out.
+        
+        Parameters:
+            stack_IDs: Set of stack IDs to filter by.
+
+        Returns:
+            DataFrame with index columns: family, genus, species, sourceID, specimenID, sampleID, stackID.
+        """
+        
+        index_cols_list = ["family", "genus", "species", "sourceID", "specimenID", "sampleID"]
+        filter_model = FilterModel.from_human_filter({
+                "contains": {
+                    "sampleID": {"or": stack_IDs}
+                }
+            })
+        index_cols = WoodMasterPotential_Out.fetch(filter_model=filter_model, stream=False)
+        index_cols = index_cols[index_cols_list].copy()
+
+        return index_cols
+
+
 
 
 
