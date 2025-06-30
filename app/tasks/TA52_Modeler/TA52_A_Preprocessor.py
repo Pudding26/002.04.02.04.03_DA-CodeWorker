@@ -1,6 +1,7 @@
 from app.utils.common.app.utils.dataModels.Jobs.ModelerJob import ModelerJob
 import cudf
 import time
+import re
 import logging
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils import resample
@@ -43,7 +44,7 @@ class TA52_A_Preprocessor:
         the pre-processing config.
         """
         t0 = time.time()
-        TA52_A_Preprocessor.expand_raw_data(job, factor=1500)  # <- optional synthetic expansion
+        TA52_A_Preprocessor.expand_raw_data(job, factor=500)  # <- optional synthetic expansion
         # <- call your existing prepare_numeric_gpu_data here -------------
         TA52_A_Preprocessor.prepare_numeric_gpu_data(job)
 
@@ -80,22 +81,31 @@ class TA52_A_Preprocessor:
         job.context  = f"Preprocessing with method: {subsubmethod}"
         logging.debug1(job.context)
 
+        # _____ Scaling
+        t2 = time.time()
+
+        job.attrs.data_num = TA52_A_Preprocessor._minmax_scaler(job, feature_range=(0, 1))
+
+        # N/an handling and bin weighting
+
+        t3 = time.time()
+
+
+        job.attrs.data_num = TA52_A_Preprocessor._bin_fraction_weighting(job)
+        # Drop rows with any NaNs after bin weighting
+        X = job.attrs.data_num
+        mask = ~cp.isnan(X).any(axis=1)
+        dropped_count = int(X.shape[0] - cp.sum(mask).item())
+
+        if dropped_count > 0:
+            logging.warning(f"Dropping {dropped_count} rows with NaNs after bin weighting.")
+        job.attrs.data_num = X[mask]
+
+
+        t4 = time.time()
+
         # ------------------------------------------------------------- dispatch
         match cfg.method:
-            # ───────────── scaling
-            case "scaling":
-                match method_cfg.submethod:
-                    case "standardization":
-                        match subsubmethod:
-                            case "MinMaxScaler":
-                                X_out = TA52_A_Preprocessor._minmax_scaler(job)
-                            case "StandardScaler":
-                                X_out = TA52_A_Preprocessor._standard_scaler(job)
-                            case _:
-                                raise ValueError(f"Unsupported standardization.subsubmethod: {subsubmethod}")
-                    case _:
-                        raise ValueError(f"Unsupported scaling.submethod: {method_cfg.submethod}")
-
             # ───────────── resampling
             case "resampling":
                 match method_cfg.submethod:
@@ -125,14 +135,14 @@ class TA52_A_Preprocessor:
                 raise ValueError(f"Unsupported preProcessing method: {cfg.method}")
 
         # ---------------------------------------------------------------- stats
-        t4           = time.time()
-        shape_after  = list(X_out.shape)
         t5           = time.time()
+        shape_after  = list(X_out.shape)
+        t6           = time.time()
 
         job.attrs.preProcessed_data = X_out
         job.context = f"SUCCESS of: Preprocessing with method: {subsubmethod}"
         logging.debug1("SUCCESS")
-        t6 = time.time()
+        t7 = time.time()
         shape_change = [
             round(a / b, 3) if b != 0 else None
             for a, b in zip(shape_after, shape_before)
@@ -145,14 +155,16 @@ class TA52_A_Preprocessor:
             "shape_before": shape_before,
             "shape_after": shape_after,
             "shape_change": shape_change,
-            "split_columns_s": 0.0,       # ← placeholder (or add real timing later)
-            "expand_data_s": 0.0,         # ← placeholder (or add real timing later)
-            "load_config_s": round(t1 - t0, 4),
-            "preprocess_core_s": round(t4 - t1, 4),
+            "create_cp_arrays": round(t1 - t0, 4),
+            "load_config_s": round(t2 - t1, 4),
+            "scaling_s": round(t3 - t2, 4),          # ← fixed: true scaling duration
+            "weighting_s": round(t4 - t3, 4),        # ← fixed: true weighting duration
+            "preprocess_core_s": round(t4 - t2, 4),  # ← corrected to scaling + weighting
             "postprocess_s": round(t5 - t4, 4),
             "final_assignment_s": round(t6 - t5, 4),
-            "total_s": round(t6 - t0, 4)
+            "total_s": round(t7 - t0, 4)             # ← accurate full runtime
         }
+
         logging.debug1(f"Preprocessing completed in {job.stats['preprocessing']['total_s']} seconds")
 
 
@@ -231,12 +243,12 @@ class TA52_A_Preprocessor:
         # ------------------------------------------------------------------ #
         # 4️⃣  final numeric matrix  (still cudf → now cupy ndarray)
         data_num_df = df_work[num_cols + index_keep]   # keep hierarchy cols numeric
-        
+
         # Replace cuDF nulls (sentinel value) with IEEE-754 NaN
         if data_num_df.isnull().any().any():
             data_num_df = data_num_df.fillna(cp.nan)
-        
-        
+
+
         X_gpu       = data_num_df.astype("float32").values   # cupy.ndarray
 
         # ------------------------------------------------------------------ #
@@ -274,6 +286,70 @@ class TA52_A_Preprocessor:
         return X_np, y_np
 
 
+
+
+    @staticmethod
+    def _bin_fraction_weighting(job) -> cp.ndarray:
+        """
+        Applies bin weighting directly using encoded column indices.
+        Assumes:
+            - Fraction values are already present in `job.attrs.data_num`.
+            - All indices are from `job.attrs.encoder.cols`.
+        """
+        def extract_bin_info_from_encoder(encoder_cols):
+            """
+            From a flat encoder mapping (name → index), extract per-bin:
+                - all feature indices
+                - the single fraction column index
+            Returns:
+                dict: {
+                    'p00-p05': {
+                        'feature_indices': [...],
+                        'fraction_index': int
+                    }
+                }
+            """
+            bin_info = {}
+
+            for name, idx in encoder_cols.items():
+                match = re.search(r"area_by_area_(p\d{2}-p\d{2})_", name)
+                if not match:
+                    continue
+
+                bin_label = match.group(1)
+
+                if name.endswith("_fraction"):
+                    bin_info.setdefault(bin_label, {})["fraction_index"] = idx
+                else:
+                    bin_info.setdefault(bin_label, {}).setdefault("feature_indices", []).append(idx)
+
+            return bin_info
+        
+        X = cp.asarray(job.attrs.data_num)
+        bin_info = extract_bin_info_from_encoder(job.attrs.encoder.cols)
+
+        if not bin_info:
+            logging.debug1("No bin info found — skipping bin weighting.")
+            return X
+
+        X_weighted = X.copy()
+
+        for bin_label, info in bin_info.items():
+            if "fraction_index" not in info or "feature_indices" not in info:
+                continue
+
+            frac = X[:, info["fraction_index"]].reshape(-1, 1)  # (n_samples, 1)
+            cols = info["feature_indices"]
+            X_weighted[:, cols] = cp.nan_to_num(X[:, cols] * frac, nan=0.0)
+
+        return X_weighted
+
+
+
+
+
+
+
     @staticmethod
     def expand_raw_data(job, factor: int) -> None:
         """
@@ -307,51 +383,98 @@ class TA52_A_Preprocessor:
         return scaler.fit_transform(job.attrs.data_num)
 
     @staticmethod
-    def _minmax_scaler(job):
+    def _minmax_scaler(job, feature_range=(0, 1)):
         from cuml.preprocessing import MinMaxScaler
         cfg = job.input.preProcessing_instructions
         p   = cfg.scaling.standardization.MinMaxScaler
-        scaler = MinMaxScaler(feature_range=(p.min, p.max))
+
+        
+        scaler = MinMaxScaler(feature_range=feature_range)
         return scaler.fit_transform(job.attrs.data_num)
 
     # ───────────────────────────────────────────────────────── samplers ────
     @staticmethod
     def _random_undersample(job):
-        from imblearn.under_sampling import RandomUnderSampler
+        X = job.attrs.data_num
+        idx = int(job.input.index_col)
+        y = X[:, idx]
+
+        labels, counts = cp.unique(y, return_counts=True)
+
+        # Fetch strategy from config
         cfg = job.input.preProcessing_instructions
-        p   = cfg.resampling.undersampling.RandomUnderSampler
-        X_np, y_np = TA52_A_Preprocessor._split_Xy(job, p)
-        sampler = RandomUnderSampler(random_state=p.random_state)
-        X_res, _ = sampler.fit_resample(X_np, y_np)
-        return cp.asarray(X_res)
+        p = cfg.resampling.undersampling.RandomUnderSampler
+        strategy = getattr(p, "strategy", "min")
+
+        if strategy == "min":
+            target = int(cp.min(counts))
+        elif strategy == "median":
+            target = int(cp.median(counts))
+        elif strategy == "mean":
+            target = int(cp.mean(counts))
+        elif isinstance(strategy, int):
+            target = int(strategy)
+        else:
+            raise ValueError(f"Unsupported undersampling strategy: {strategy}")
+
+        result = []
+        for label in labels.tolist():
+            mask = y == label
+            X_class = X[mask]
+            n = X_class.shape[0]
+            if n > target:
+                selected = cp.random.choice(n, size=target, replace=False)
+                X_sampled = X_class[selected]
+            else:
+                X_sampled = X_class
+            result.append(X_sampled)
+
+        return cp.concatenate(result, axis=0)
+
 
     @staticmethod
     def _random_oversample(job):
+        X = job.attrs.data_num
+        idx = int(job.input.index_col)
+        y = X[:, idx]
+
+        labels, counts = cp.unique(y, return_counts=True)
+
+        # Fetch strategy from config
         cfg = job.input.preProcessing_instructions
-        p   = cfg.resampling.oversampling.RandomOverSampler
-        X_gpu = job.attrs.data_num
-        idx   = int(job.input.index_col)
+        p = cfg.resampling.oversampling.RandomOverSampler
+        strategy = getattr(p, "strategy", "max")
+
+        if strategy == "max":
+            target = int(cp.max(counts))
+        elif strategy == "median":
+            target = int(cp.median(counts))
+        elif strategy == "mean":
+            target = int(cp.mean(counts))
+        elif isinstance(strategy, int):
+            target = int(strategy)
+        else:
+            raise ValueError(f"Unsupported oversampling strategy: {strategy}")
+
+        oversampled_chunks = []
+
+        for label in labels.tolist():
+            mask = y == label
+            X_c = X[mask]
+            n = X_c.shape[0]
+
+            if n < target:
+                extra_idx = cp.random.choice(n, size=target - n, replace=True)
+                X_extra = X_c[extra_idx]
+                X_bal = cp.concatenate([X_c, X_extra], axis=0)
+            else:
+                X_bal = X_c
+
+            oversampled_chunks.append(X_bal)
+
+        return cp.concatenate(oversampled_chunks, axis=0)
 
 
-        # Work on-GPU with cudf
-        df = cudf.DataFrame(X_gpu)
-        df["target"] = df.iloc[:, idx]
-
-        counts         = df["target"].value_counts()
-        max_size       = counts.max()
-        dfs, cache     = [], {}
-
-        for label in counts.index.to_arrow().to_pylist():
-            df_c = df[df["target"] == label]
-            n    = len(df_c)
-            if n < max_size:
-                cache.setdefault(n, cp.arange(n))
-                extra = cp.random.choice(cache[n], size=max_size - n, replace=True)
-                df_c  = cudf.concat([df_c, df_c.iloc[extra]], ignore_index=True)
-            dfs.append(df_c)
-
-        over = cudf.concat(dfs, ignore_index=True).drop(columns=["target"])
-        return over.to_cupy()
 
     @staticmethod
     def _smote_sampler(job):
@@ -396,47 +519,49 @@ class TA52_A_Preprocessor:
 
     @staticmethod
     def _hybrid_sampler(job):
-        from imblearn.over_sampling import RandomOverSampler
-        from imblearn.under_sampling import RandomUnderSampler
-        cfg = job.input.preProcessing_instructions
-        p   = cfg.resampling.hybrid.HybridSampler
-        X_np, y_np = TA52_A_Preprocessor._split_Xy(job, p)
-        counts = Counter(y_np)
+        X = job.attrs.data_num
+        idx = int(job.input.index_col)
+        group_ids = X[:, idx]
 
-        # Determine target size
-        if p.target_size is not None:
-            target = p.target_size
-        elif p.strategy == "mean":
-            target = int(np.mean(list(counts.values())))
-        elif p.strategy == "max":
-            target = int(np.max(list(counts.values())))
-        elif p.strategy == "min":
-            target = int(np.min(list(counts.values())))
+        # Count group sizes
+        unique_ids, counts = cp.unique(group_ids, return_counts=True)
+
+        # Fetch strategy
+        cfg = job.input.preProcessing_instructions
+        p = cfg.resampling.hybrid.HybridSampler
+        strategy = getattr(p, "strategy", "median")
+
+        if strategy == "min":
+            target = int(cp.min(counts))
+        elif strategy == "median":
+            target = int(cp.median(counts))
+        elif strategy == "mean":
+            target = int(cp.mean(counts))
+        elif strategy == "max":
+            target = int(cp.max(counts))
+        elif isinstance(strategy, int):
+            target = int(strategy)
         else:
-            target = int(np.median(list(counts.values())))
+            raise ValueError(f"Unsupported hybrid sampling strategy: {strategy}")
 
         chunks = []
-        for label, size in counts.items():
-            mask = y_np == label
-            X_c  = X_np[mask]
-            y_c  = y_np[mask]
+        for gid in unique_ids.tolist():
+            mask = group_ids == gid
+            X_g = X[mask]
+            n = X_g.shape[0]
 
-            if size < target:   # oversample
-                sampler = RandomOverSampler(
-                    sampling_strategy={label: target},
-                    random_state=p.random_state
-                )
-            elif size > target: # undersample
-                sampler = RandomUnderSampler(
-                    sampling_strategy={label: target},
-                    random_state=p.random_state
-                )
+            if n < target:
+                extra_idx = cp.random.choice(n, size=target - n, replace=True)
+                X_extra = X_g[extra_idx]
+                X_bal = cp.concatenate([X_g, X_extra], axis=0)
+            elif n > target:
+                selected_idx = cp.random.choice(n, size=target, replace=False)
+                X_bal = X_g[selected_idx]
             else:
-                chunks.append(X_c)
-                continue
+                X_bal = X_g
 
-            X_bal, _ = sampler.fit_resample(X_c, y_c)
             chunks.append(X_bal)
 
-        return cp.asarray(np.vstack(chunks))
+        return cp.concatenate(chunks, axis=0)
+
 

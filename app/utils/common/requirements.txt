@@ -62,3 +62,6 @@ tzdata==2025.2
 urllib3==2.4.0
 uvicorn==0.34.2
 watchdog==6.0.0
+torch==2.3.0+cu121
+torchvision==0.18.0+cu121
+torchaudio==2.3.0+cu121

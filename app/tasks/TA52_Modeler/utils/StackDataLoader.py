@@ -87,19 +87,52 @@ class StackDataLoader:
             aggfunc="first"
         ).reset_index()
 
-        # 2. Create bin count column names (e.g., area_bin2_count)
-        df_long["bin_count_column"] = (
-            df_long["bin_type"].astype(str)
-            + "_" + df_long["bin_label"].astype(str)
-            + "_count"
+        # 2. Extract distinct bin count info per (bin_type, bin_label)
+        df_counts_unique = (
+            df_long[["shotID", "stackID", "bin_type", "bin_label", "bin_count"]]
+            .drop_duplicates(subset=["shotID", "stackID", "bin_type", "bin_label"])
         )
 
-        df_counts = df_long.pivot_table(
+        # Create count and fraction column names
+        df_counts_unique["bin_key"] = (
+            df_counts_unique["bin_type"].astype(str)
+            + "_" + df_counts_unique["bin_label"].astype(str)
+        )
+
+        # Compute total count per (shotID, stackID)
+        df_counts_unique["bin_count"] = df_counts_unique["bin_count"].fillna(0)
+        df_total = (
+            df_counts_unique.groupby(["shotID", "stackID"])["bin_count"]
+            .sum()
+            .reset_index()
+            .rename(columns={"bin_count": "bin_total"})
+        )
+
+        df_counts_merged = pd.merge(df_counts_unique, df_total, on=["shotID", "stackID"], how="left")
+        df_counts_merged["bin_fraction"] = df_counts_merged["bin_count"] / df_counts_merged["bin_total"]
+
+        # Pivot count and fraction columns
+        df_counts_merged["count_col"] = df_counts_merged["bin_key"] + "_count"
+        df_counts_merged["fraction_col"] = df_counts_merged["bin_key"] + "_fraction"
+
+        df_counts_pivot_count = df_counts_merged.pivot_table(
             index=["shotID", "stackID"],
-            columns="bin_count_column",
+            columns="count_col",
             values="bin_count",
             aggfunc="first"
-        ).reset_index()
+        )
+
+        df_counts_pivot_fraction = df_counts_merged.pivot_table(
+            index=["shotID", "stackID"],
+            columns="fraction_col",
+            values="bin_fraction",
+            aggfunc="first"
+        )
+
+        # Combine count and fraction tables
+        df_counts = pd.concat([df_counts_pivot_count, df_counts_pivot_fraction], axis=1).reset_index()
+
+
 
         # 3. Merge feature values with count info
         df_combined = pd.merge(df_features, df_counts, on=["shotID", "stackID"], how="outer")

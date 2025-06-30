@@ -25,7 +25,8 @@ WORKDIR /workspace
 
 # Install requirements
 COPY requirements.txt /workspace/requirements.txt
-RUN pip3 install --no-cache-dir -r requirements.txt
+
+RUN pip3 install --no-cache-dir -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu121
 
 #USER $USERNAME
 

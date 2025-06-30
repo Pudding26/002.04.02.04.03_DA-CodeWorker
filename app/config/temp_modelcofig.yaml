@@ -1,40 +1,3 @@
-PP01:
-  name: "StandardScaler Preprocessing"
-  description: "Use standardization with mean and std on all features."
-
-  method: "scaling"
-  scaling:
-    submethod: "standardization"
-    standardization:
-      subsubmethod: "StandardScaler"
-      StandardScaler:
-        with_mean: true
-        with_std: true
-      MinMaxScaler: None
-
-PP02:
-  name: "MinMaxScaler Preprocessing"
-  description: "Min-Max scale features to the [0, 1] range."
-
-  method: "scaling"
-  scaling:
-    submethod: "standardization"
-    standardization:
-      subsubmethod: "MinMaxScaler"
-      MinMaxScaler:
-        min: 0.0
-        max: 1.0
-        clip: true
-      StandardScaler: None
-
-PP03:
-  name: "Skip Scaling"
-  description: "No scaling or normalization applied."
-
-  method: None
-  scaling: None
-
-
 PP04:
   name: "Random Oversampling"
   description: "Duplicate minority class samples using shotID scope."
@@ -44,7 +7,7 @@ PP04:
     oversampling:
       subsubmethod: "RandomOverSampler"
       RandomOverSampler:
-        scope: "genus"
+        scope: "species"
         random_state: 42
       SMOTESampler: None
     undersampling: None
@@ -60,7 +23,7 @@ PP05:
     oversampling:
       subsubmethod: "SMOTESampler"
       SMOTESampler:
-        scope: "shotID"
+        scope: "species"
         k_neighbors: 5
         sampling_strategy: "auto"
         random_state: 42
@@ -78,7 +41,7 @@ PP06:
     undersampling:
       subsubmethod: "RandomUnderSampler"
       RandomUnderSampler:
-        scope: "shotID"
+        scope: "species"
         random_state: 42
     oversampling: None
     bootstrapping: None
@@ -93,7 +56,7 @@ PP07:
     hybrid:
       subsubmethod: "HybridSampler"
       HybridSampler:
-        scope: "shotID"
+        scope: "species"
         strategy: "median"
         target_size: None
         random_state: 42
@@ -110,7 +73,7 @@ PP08:
     bootstrapping:
       subsubmethod: "BootstrapSampler"
       BootstrapSampler:
-        scope: "shotID"
+        scope: "species"
         n_samples: None
         random_state: 42
     oversampling: None
@@ -118,8 +81,48 @@ PP08:
     hybrid: None
 
 
+# ── MM20 : implicit shape bins → PCA ─────────────────────────────────────────
+MM20:
+  name: "PCA with binning"
 
-MM01:
-  method: "distance"
-  distance:
-    metric: "cosine"
+  binning_cfg:
+    strategy: "implicit"              # ["none","explicit","implicit"]
+    implicit:
+      ignore_case: true
+      agg_func: "mean"
+      patterns:
+        geo_shape:  ["area", "roundness", "aspect"]
+        intensity:  ["mean_int", "std_int", "max_int"]
+    explicit: null                    # keep the key so the schema is constant
+
+  method: "linear"                    # <- typo fixed (“linar” → linear)
+  linear:
+    submethod: "PCA"                  # only choice inside the “linear” family
+    PCA:
+      n_components: 0.95
+      whiten: false
+
+# ── MM21 : t-SNE with binning ───────────────────────────────────────────────
+MM21:
+  name: "t-SNE with binning"
+
+  binning_cfg:
+    strategy: "implicit"
+    implicit:
+      ignore_case: true
+      agg_func: "mean"
+      patterns:
+        geo_shape:  ["area", "roundness", "aspect"]
+        intensity:  ["mean_int", "std_int", "max_int"]
+    explicit: null
+
+  method: "manifold"
+  manifold:
+    submethod: "tSNE"                 # always camel-case inside YAML
+    tSNE:
+      n_components: 2
+      perplexity:    30
+      learning_rate: 200.0
+      n_iter:        1_000
+      random_state:  42
+    UMAP: null                        # stub keeps schema rectangular

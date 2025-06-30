@@ -4,6 +4,8 @@ from queue import Queue, Empty
 from threading import Thread
 from typing import List, Dict, Any, Optional
 import pandas as pd
+import gc
+
 
 from app.tasks.TA52_Modeler.TA52_A_Preprocessor import TA52_A_Preprocessor
 from app.tasks.TA52_Modeler.TA52_B_Modeler import TA52_B_Modeler
@@ -113,6 +115,7 @@ class TA52_0_ModelerOrchestrator:
                     error_msg = traceback.format_exc()
                     logging.error(f"[ERROR] Job {job.job_uuid} with context {job.context} failed:\n{error_msg}")
                     self.error_queue.put((job, e, error_msg))
+                    self._cleanup_job_memory(job)
 
                 job_count += 1
                 if job_count % log_interval == 0 or job_count == total_jobs:
@@ -125,6 +128,7 @@ class TA52_0_ModelerOrchestrator:
 
             except Empty:
                 continue
+
 
 
     def store_results(self):
@@ -147,18 +151,21 @@ class TA52_0_ModelerOrchestrator:
                 except Exception as e:
                     logging.warning(f"[STORER WARNING] Failed to store Job {job.job_uuid}: {str(e)}")
 
-                self.output_queue.task_done()
+                finally:
+                    self._cleanup_job_memory(job)
+                    self.output_queue.task_done()
 
             except Empty:
                 continue
+
 
     def preprocess_job(self, job: ModelerJob):
         preprocessor = TA52_A_Preprocessor
         preprocessor.run(job)
 
     def model_job(self, job: ModelerJob):
-        modeler = TA52_B_Modeler(job)
-        modeler.run()
+        modeler = TA52_B_Modeler
+        modeler.run(job)
 
     def store_job_result(self, job: ModelerJob):
         result_df = job.attrs.model_results
@@ -320,63 +327,89 @@ class TA52_0_ModelerOrchestrator:
 
 
 
-    def _print_summary_df(self, stats_list: List[Dict]):
+    def _print_summary_df(self, stats_list: List[Dict], key="preprocessing"):
         if not stats_list:
             logging.debug2("[SUMMARY] No job stats to print.")
             return
 
-        summary_df = self._create_summary_df(stats_list)
+        summary_df = self._create_summary_df(stats_list, key)
         logging.debug2("\n" + summary_df.to_string(index=False))
 
-    def _create_summary_df(self, stats_list: List[Dict]) -> pd.DataFrame:
+    def _create_summary_df(self, stats_list: List[Dict], key: str = "preprocessing") -> pd.DataFrame:
         import pandas as pd
 
-        # Extract preprocessing stats only
-        df = pd.DataFrame([entry["preprocessing"] for entry in stats_list])
+        # Extract stats under the provided key
+        df = pd.DataFrame([entry[key] for entry in stats_list if key in entry])
 
-        # Extract row count from final shape
+        if df.empty:
+            return pd.DataFrame()  # fallback if no matching entries
+
+        # Add sample/ratio info if shapes are present
         if "shape_after" in df.columns:
             df["samples"] = df["shape_after"].apply(lambda s: s[0] if isinstance(s, list) else None)
 
-        # Extract row/column ratio change
         if "shape_change" in df.columns:
             df["row_ratio"] = df["shape_change"].apply(lambda r: r[0] if isinstance(r, list) else None)
             df["col_ratio"] = df["shape_change"].apply(lambda r: r[1] if isinstance(r, list) and len(r) > 1 else None)
 
-        # Group by method/submethod/subsubmethod and compute summaries
-        summary_df = df.groupby(["method", "submethod", "subsubmethod"], as_index=False).agg(
-            jobs=("method", "count"),
-            avg_samples=("samples", "mean"),
-            total_samples=("samples", "sum"),
-            avg_time_s=("total_s", "mean"),
-            total_time_s=("total_s", "sum"),
+        # Build aggregation dictionary dynamically based on present columns
+        aggregations = {
+            "jobs": ("method", "count"),
+            "avg_samples": ("samples", "mean"),
+            "total_samples": ("samples", "sum"),
+            "avg_time_s": ("total_s", "mean"),
+            "total_time_s": ("total_s", "sum"),
+            "avg_row_ratio": ("row_ratio", "mean"),
+            "avg_col_ratio": ("col_ratio", "mean"),
+        }
 
-            # Optional: average of sub-timings
-            avg_load_s=("load_config_s", "mean"),
-            avg_split_s=("split_columns_s", "mean"),
-            avg_expand_s=("expand_data_s", "mean"),
-            avg_core_s=("preprocess_core_s", "mean"),
-            avg_post_s=("postprocess_s", "mean"),
-            avg_assign_s=("final_assignment_s", "mean"),
+        optional_timings = [
+            "load_config_s", "split_columns_s", "expand_data_s",
+            "preprocess_core_s", "postprocess_s", "final_assignment_s"
+        ]
 
-            # NEW: shape change metrics
-            avg_row_ratio=("row_ratio", "mean"),
-            avg_col_ratio=("col_ratio", "mean"),
-        )
+        for col in optional_timings:
+            if col in df.columns:
+                aggregations[f"avg_{col.replace('_s', '')}_s"] = (col, "mean")
+
+        # Group + aggregate
+        summary_df = df.groupby(["method", "submethod", "subsubmethod"], as_index=False).agg(**aggregations)
 
         # Derived metric: throughput
-        summary_df["samples_per_s"] = (summary_df["total_samples"] / summary_df["total_time_s"]).round(2)
+        if "total_samples" in summary_df and "total_time_s" in summary_df:
+            summary_df["samples_per_s"] = (summary_df["total_samples"] / summary_df["total_time_s"]).round(2)
 
         # Round numeric columns
-        for col in [
-            "avg_time_s", "total_time_s", "samples_per_s",
-            "avg_load_s", "avg_split_s", "avg_expand_s",
-            "avg_core_s", "avg_post_s", "avg_assign_s",
-            "avg_row_ratio", "avg_col_ratio"
-        ]:
-            if col in summary_df.columns:
-                summary_df[col] = summary_df[col].round(2)
+        numeric_cols = summary_df.select_dtypes(include="number").columns
+        summary_df[numeric_cols] = summary_df[numeric_cols].round(2)
 
         return summary_df
 
 
+
+    def _cleanup_job_memory(self, job):
+        # Remove heavy attributes
+        attrs_to_clear = [
+            "data_num", "preProcessed_data", "data_frame", "bin_counts", "count_matrix"
+        ]
+
+        for attr in attrs_to_clear:
+            if hasattr(job.attrs, attr):
+                try:
+                    setattr(job.attrs, attr, None)
+                except Exception:
+                    pass
+
+        # Clear other general-purpose job data if needed
+        job.input = None
+        job.context = None
+
+        # GPU memory cleanup (CuPy only)
+        try:
+            import cupy as cp
+            cp._default_memory_pool.free_all_blocks()
+        except Exception:
+            pass  # CuPy not in use or already cleaned
+
+        # Python memory cleanup
+        gc.collect()
