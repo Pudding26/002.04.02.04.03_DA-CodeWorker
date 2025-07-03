@@ -78,3 +78,4 @@ imbalanced-learn==0.13.0
 torch==2.3.0+cu121
 torchvision==0.18.0+cu121
 torchaudio==2.3.0+cu121
+umap-learn==0.5.1

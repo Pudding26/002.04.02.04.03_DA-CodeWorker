@@ -10,7 +10,7 @@ from app.utils.common.app.utils.dataModels.Jobs.JobEnums import JobStatus, JobKi
 from app.utils.common.app.utils.dataModels.configs.scaling import ScalingConfig
 from app.utils.common.app.utils.dataModels.configs.resampling import ResamplingConfig
 from app.utils.common.app.utils.dataModels.configs.clustering import ClusterConfig
-from app.utils.common.app.utils.dataModels.configs.metricModelling import MetricModellingConfig
+from app.utils.common.app.utils.dataModels.configs.metricModelling import DimReductionCfg, BinningCfg
 
 
 
@@ -32,7 +32,9 @@ class PreProcessingAttributes(BaseModel):
 
 
 class MetricModelAttributes(BaseModel):
-    method: Optional[str] = "none"
+    binning_cfg: Optional[BinningCfg] = Field(default_factory=BinningCfg)
+    dim_reduction: Optional[DimReductionCfg] = Field(default_factory=DimReductionCfg)
+
 
 class ModelerJobInput(BaseModel):
     stackIDs: List[str]
@@ -61,6 +63,13 @@ class ModelerAttrs(BaseModel):
     model_results: Optional[Any] = None  # pandas.DataFrame
     data_num: Optional[Any] = None  # cupy DataFrame or np/cupy array
     encoder: Optional[Any] = None
+    engineered_data: Optional[Any] = None  # cupy DataFrame or np/cupy array
+    multi_pca_results: Optional[Any] = None # A dictionary with PCA results for each bin. The keys are the percentage of retained cols per bin.
+    blacklist: Optional[List[str]] = None  # List of features that are not used in the model
+    dropped_fraction: Optional[float] = None  # Retained fraction of rows
 
 
-
+    featureClusterMap: Optional[Any] = None  # Dict with cluster labels and their features
+    result_df: Optional[Any] = None  # Results of the model validation
+    results_cupy: Optional[Any] = None  # Results of the model validation in cupy format
+    uniques: Optional[Dict[str, int]] = None  # Unique counts per scope

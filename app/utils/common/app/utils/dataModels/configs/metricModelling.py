@@ -86,7 +86,12 @@ class DimReductionCfg(BaseModel):
         return self
 
 
-class MetricModellingConfig(BaseModel):
-    name: str
-    binning_cfg:   Optional[BinningCfg]    = None 
-    dim_reduction: DimReductionCfg
+class BinningCfg(BaseModel):
+    """
+    Configuration for binning strategies.
+    Choose a strategy and define related parameters.
+    """
+    strategy: Literal["none", "explicit", "implicit"] = "none"
+    explicit: Optional[ExplicitBinning] = None
+    implicit: Optional[ImplicitBinning] = None
+    

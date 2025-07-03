@@ -43,12 +43,22 @@ class BaseJob(BaseModel):
             raise ValueError(f"{self.__class__.__name__} must define `orm_model` to support update_db()")
 
         self.updated = datetime.now(timezone.utc)
-        row = self.to_sql_row()
-        row["updated"] = self.updated  # always update 'updated' timestamp
 
-        if fields_to_update is not None:
-            # Keep only fields explicitly listed, plus 'job_uuid and updated' (needed to locate the record)
-            row = {k: v for k, v in row.items() if k in fields_to_update or k in {"job_uuid", "updated"}}
+        if fields_to_update is not None and "payload" not in fields_to_update:
+            # Fast path: minimal row update
+            row = {
+                "job_uuid": self.job_uuid,
+                "updated": self.updated,
+            }
+            for f in fields_to_update:
+                if f not in {"job_uuid", "updated"}:
+                    row[f] = getattr(self, f, None)
+        else:
+            # Full row update
+            row = self.to_sql_row()
+            row["updated"] = self.updated
+            if fields_to_update is not None:
+                row = {k: v for k, v in row.items() if k in fields_to_update or k in {"job_uuid", "updated"}}
 
         self.orm_model.update_row(row)
 

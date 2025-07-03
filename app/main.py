@@ -10,6 +10,10 @@ from contextlib import asynccontextmanager
 # Instantiate the handler
 lobby_handler = LobbyHandler()
 
+import os
+os.environ["CUML_LOG_LEVEL"] = "error"
+import cuml
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 🕐 wait for a bit to ensure the app is accepting connections
@@ -35,7 +39,7 @@ def safe_init_orms():
         from app.utils.common.app.utils.SQL.models.production.orm.WoodMaster import WoodMaster
         from app.utils.common.app.utils.SQL.models.production.orm.WoodMasterPotential import WoodMasterPotential
         from app.utils.common.app.utils.SQL.models.production.orm.DoEArchive import DoEArchive
-        from app.utils.common.app.utils.SQL.models.production.orm.ModellingResults import ModellingResults
+        from app.utils.common.app.utils.SQL.models.production.orm_ModellingResults import orm_ModellingResults
 
 
 

@@ -1,4 +1,10 @@
 from app.utils.common.app.utils.dataModels.Jobs.ModelerJob import ModelerJob
+
+
+import os
+os.environ["CUML_LOG_LEVEL"] = "error"
+import cuml
+
 import cudf
 import time
 import re
@@ -43,18 +49,22 @@ class TA52_A_Preprocessor:
         and columns were encoded + the target column index recorded in
         the pre-processing config.
         """
-        t0 = time.time()
-        TA52_A_Preprocessor.expand_raw_data(job, factor=500)  # <- optional synthetic expansion
-        # <- call your existing prepare_numeric_gpu_data here -------------
-        TA52_A_Preprocessor.prepare_numeric_gpu_data(job)
+        logging.debug3("STARTING Preprocessor")
 
+        t0 = time.time()
+        #TA52_A_Preprocessor.expand_raw_data(job, factor=500)  # <- optional synthetic expansion
+        # <- call your existing prepare_numeric_gpu_data here -------------
+        logging.debug2("Preparing numeric GPU data...")
+        TA52_A_Preprocessor.prepare_numeric_gpu_data(job)
+        logging.debug2("Numeric GPU data prepared.")
         cfg          = job.input.preProcessing_instructions
         X_gpu        = job.attrs.data_num
         shape_before = list(X_gpu.shape)
         t1           = time.time()
+        job.stats.setdefault("preprocessing", {})
 
         if cfg.method is None:
-            logging.debug1("No preprocessing method specified, skipping.")
+            logging.warning("No preprocessing method specified, skipping.")
             job.attrs.preProcessed_data = X_gpu
             job.stats["preprocessing"] = {
                 "method": None,
@@ -64,7 +74,7 @@ class TA52_A_Preprocessor:
                 "shape_after": shape_before,
                 "elapsed_time": 0.0,
             }
-            return
+            return job
 
         # ---------------------------------------------------------------- config
         try:
@@ -75,35 +85,37 @@ class TA52_A_Preprocessor:
                 f"(type: {type(cfg.method)}). Job ID: {getattr(job, 'id', 'unknown')}",
                 exc_info=True
             )
-            raise
+            job.status = "FAILED"
+            return job
 
         subsubmethod = getattr(method_cfg, method_cfg.submethod).subsubmethod
         job.context  = f"Preprocessing with method: {subsubmethod}"
-        logging.debug1(job.context)
+        logging.debug2(job.context)
 
         # _____ Scaling
         t2 = time.time()
-
+        logging.debug2("Scaling data...")
         job.attrs.data_num = TA52_A_Preprocessor._minmax_scaler(job, feature_range=(0, 1))
 
         # N/an handling and bin weighting
 
         t3 = time.time()
 
-
+        logging.debug2("Handling NaNs and applying bin weighting...")
         job.attrs.data_num = TA52_A_Preprocessor._bin_fraction_weighting(job)
         # Drop rows with any NaNs after bin weighting
-        X = job.attrs.data_num
-        mask = ~cp.isnan(X).any(axis=1)
-        dropped_count = int(X.shape[0] - cp.sum(mask).item())
-
-        if dropped_count > 0:
-            logging.warning(f"Dropping {dropped_count} rows with NaNs after bin weighting.")
-        job.attrs.data_num = X[mask]
+        
+        job, dropped = TA52_A_Preprocessor.drop_nans(job)
+        job.stats["preprocessing"]["dropped_nans_after_binning"] = dropped
+        job = TA52_A_Preprocessor._check_dropped_fraction(job, shape_before, dropped)
+        if job.status == "FAILED":
+            logging.warning(f"[PREPROCESS] Job {job.job_uuid} failed due to excessive NaN rows dropped ({dropped} rows) after scaling.")
+            return job
 
 
         t4 = time.time()
-
+        logging.debug2("Data scaling and NaN handling completed.")
+        logging.debug2(f"Applying sampling method: {method_cfg.submethod} with scope: {job.input.scope}")
         # ------------------------------------------------------------- dispatch
         match cfg.method:
             # ───────────── resampling
@@ -136,19 +148,30 @@ class TA52_A_Preprocessor:
 
         # ---------------------------------------------------------------- stats
         t5           = time.time()
-        shape_after  = list(X_out.shape)
-        t6           = time.time()
+        logging.debug2("Sampling completed")
+        shape_after = list(X_out.shape)
+        job.attrs.data_num = X_out
 
-        job.attrs.preProcessed_data = X_out
+        job, dropped = TA52_A_Preprocessor.drop_nans(job)
+        job = TA52_A_Preprocessor._check_dropped_fraction(job, shape_before, dropped)
+        job.stats["preprocessing"]["dropped_nans_after_sampling"] = dropped
+        if job.status == "FAILED":
+            logging.warning(f"[PREPROCESS] Job {job.job_uuid} failed due to excessive NaN rows dropped ({dropped} rows) after sampling.")
+            return job
+        
+        job.attrs.preProcessed_data = job.attrs.data_num  # Store the final preprocessed data
+
         job.context = f"SUCCESS of: Preprocessing with method: {subsubmethod}"
         logging.debug1("SUCCESS")
-        t7 = time.time()
+
+        t6 = time.time()
         shape_change = [
             round(a / b, 3) if b != 0 else None
             for a, b in zip(shape_after, shape_before)
         ]
 
-        job.stats["preprocessing"] = {
+        # ✅ Fix: use parentheses for update()
+        job.stats["preprocessing"].update({
             "method": cfg.method,
             "submethod": method_cfg.submethod,
             "subsubmethod": subsubmethod,
@@ -157,15 +180,16 @@ class TA52_A_Preprocessor:
             "shape_change": shape_change,
             "create_cp_arrays": round(t1 - t0, 4),
             "load_config_s": round(t2 - t1, 4),
-            "scaling_s": round(t3 - t2, 4),          # ← fixed: true scaling duration
-            "weighting_s": round(t4 - t3, 4),        # ← fixed: true weighting duration
-            "preprocess_core_s": round(t4 - t2, 4),  # ← corrected to scaling + weighting
-            "postprocess_s": round(t5 - t4, 4),
+            "scaling_s": round(t3 - t2, 4),
+            "weighting_s": round(t4 - t3, 4),
+            "coreProcess_s": round(t5 - t4, 4),
             "final_assignment_s": round(t6 - t5, 4),
-            "total_s": round(t7 - t0, 4)             # ← accurate full runtime
-        }
+            "total_s": round(t6 - t0, 4)
+        })
 
-        logging.debug1(f"Preprocessing completed in {job.stats['preprocessing']['total_s']} seconds")
+        logging.debug3(f"Preprocessing completed in {job.stats['preprocessing']['total_s']} seconds")
+
+        return job
 
 
 
@@ -173,6 +197,42 @@ class TA52_A_Preprocessor:
 #----------
 # UTILITY
 #----------
+
+    @staticmethod
+    def drop_nans(job):
+        """Drop rows with any NaNs in job.attrs.data_num and apply mask to encoder_vals if present."""
+        X = job.attrs.data_num
+        if X is None:
+            raise ValueError("job.attrs.data_num is None – cannot drop NaNs.")
+
+        mask = ~cp.isnan(X).any(axis=1)
+        dropped = int(X.shape[0] - cp.sum(mask).item())
+        if dropped > 0:
+            logging.warning(f"[drop_nans] Dropped {dropped} rows with NaNs.")
+
+        # Apply mask to data
+        job.attrs.data_num = X[mask]
+
+        # Apply same mask to encoder if present
+        if hasattr(job.attrs, "encoder_vals") and job.attrs.encoder_vals is not None:
+            job.attrs.encoder_vals = job.attrs.encoder_vals[mask]
+
+        return job, dropped
+
+
+    @staticmethod
+    def _check_dropped_fraction(job, shape_before, dropped, threshold=0.75):
+        n_total = shape_before[0]
+        n_remaining = job.attrs.data_num.shape[0]
+        dropped_fraction = dropped / n_total if n_total > 0 else 1.0
+
+        job.attrs.dropped_fraction = round(dropped_fraction, 4)
+
+        if dropped_fraction > threshold:
+            job.status = "FAILED"
+
+        return job
+
 
     @staticmethod
     def _encode_columns(df: cudf.DataFrame, cols: List[str]) -> Dict[str, cudf.Series]:
@@ -232,24 +292,28 @@ class TA52_A_Preprocessor:
         # ------------------------------------------------------------------ #
         # 2️⃣  split columns
         num_cols   = df_work.select_dtypes(include="number").columns.tolist()
-        str_cols   = [c for c in df_work.columns if c not in num_cols and c not in index_keep]
+
+        # Index and string columns present in the current DataFrame
+        index_present = [c for c in INDEX_COLS if c in df_work.columns]
+        str_cols      = [c for c in df_work.columns if c not in num_cols and c not in index_present]
 
         # ------------------------------------------------------------------ #
         # 3️⃣  GPU label-encode
-        enc_idx = TA52_A_Preprocessor._encode_columns(df_work, index_keep)
-        enc_str = TA52_A_Preprocessor._encode_columns(df_work, str_cols)
+        enc_idx  = TA52_A_Preprocessor._encode_columns(df_work, index_present)
+        enc_str  = TA52_A_Preprocessor._encode_columns(df_work, str_cols)
         enc_vals = {**enc_idx, **enc_str}              # merge the two dicts
 
         # ------------------------------------------------------------------ #
         # 4️⃣  final numeric matrix  (still cudf → now cupy ndarray)
-        data_num_df = df_work[num_cols + index_keep]   # keep hierarchy cols numeric
+        # Insert index + encoded str columns first, followed by numeric ones
+        ordered_cols = index_present + str_cols + [c for c in num_cols if c not in index_present]
+        data_num_df  = df_work[ordered_cols]
 
         # Replace cuDF nulls (sentinel value) with IEEE-754 NaN
         if data_num_df.isnull().any().any():
             data_num_df = data_num_df.fillna(cp.nan)
 
-
-        X_gpu       = data_num_df.astype("float32").values   # cupy.ndarray
+        X_gpu = data_num_df.astype("float32").values   # cupy.ndarray
 
         # ------------------------------------------------------------------ #
         # 5️⃣  column-name encoder (dict str → int)
@@ -262,6 +326,13 @@ class TA52_A_Preprocessor:
         job.attrs.encoder.cols        = col_encoder
         job.attrs.encoder.vals        = enc_vals
 
+        # 🆕 7️⃣ blacklist info
+        job.attrs.blacklist = {
+            "index_cols": index_present,
+            "str_cols": str_cols
+        }
+
+        # 🆕 8️⃣ Store index column index in data matrix
         try:
             job.input.index_col = col_encoder[scope]
         except KeyError:
@@ -270,7 +341,6 @@ class TA52_A_Preprocessor:
         # optional: drop the big cudf frame as well if memory is tight
         del df_raw, df_work, data_num_df
         cp.get_default_memory_pool().free_all_blocks()  # release GPU mem
-
 
     # ──────────────────────────────────────────────────────────── split util ────
     @staticmethod
@@ -345,11 +415,6 @@ class TA52_A_Preprocessor:
         return X_weighted
 
 
-
-
-
-
-
     @staticmethod
     def expand_raw_data(job, factor: int) -> None:
         """
@@ -388,9 +453,27 @@ class TA52_A_Preprocessor:
         cfg = job.input.preProcessing_instructions
         p   = cfg.scaling.standardization.MinMaxScaler
 
-        
-        scaler = MinMaxScaler(feature_range=feature_range)
-        return scaler.fit_transform(job.attrs.data_num)
+        X     = job.attrs.data_num
+        cols  = job.attrs.encoder.cols
+        bl    = job.attrs.blacklist
+
+        # Get indices of all blacklisted columns (index + str)
+        blacklist_cols = set(bl["index_cols"] + bl["str_cols"])
+        blacklist_idx  = [cols[c] for c in blacklist_cols if c in cols]
+
+        # Compute all columns to scale (those NOT in blacklist)
+        scale_idx = [i for i in range(X.shape[1]) if i not in blacklist_idx]
+
+        # Create empty array to hold scaled values
+        X_scaled = cp.array(X)  # full copy, keeps unscaled values in-place
+
+        if scale_idx:
+            scaler = MinMaxScaler(feature_range=feature_range)
+            X_scaled[:, scale_idx] = scaler.fit_transform(X[:, scale_idx])
+        else:
+            logging.warning("[SCALER] No columns left to scale after applying blacklist.")
+
+        return X_scaled
 
     # ───────────────────────────────────────────────────────── samplers ────
     @staticmethod

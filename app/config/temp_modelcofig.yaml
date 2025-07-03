@@ -32,53 +32,57 @@ PP05:
     bootstrapping: None
     hybrid: None
 
-PP06:
-  name: "Random Undersampling"
-  description: "Remove samples from majority classes using shotID scope."
-  method: "resampling"
-  resampling:
-    submethod: "undersampling"
-    undersampling:
-      subsubmethod: "RandomUnderSampler"
-      RandomUnderSampler:
-        scope: "species"
-        random_state: 42
-    oversampling: None
-    bootstrapping: None
-    hybrid: None
+archive:
+  PP06:
+    name: "Random Undersampling"
+    description: "Remove samples from majority classes using shotID scope."
+    method: "resampling"
+    resampling:
+      submethod: "undersampling"
+      undersampling:
+        subsubmethod: "RandomUnderSampler"
+        RandomUnderSampler:
+          scope: "species"
+          random_state: 42
+      oversampling: None
+      bootstrapping: None
+      hybrid: None
 
-PP07:
-  name: "Hybrid Resampling"
-  description: "Balance all classes to median size using over/under sampling."
-  method: "resampling"
-  resampling:
-    submethod: "hybrid"
-    hybrid:
-      subsubmethod: "HybridSampler"
-      HybridSampler:
-        scope: "species"
-        strategy: "median"
-        target_size: None
-        random_state: 42
-    oversampling: None
-    undersampling: None
-    bootstrapping: None
+  PP07:
+    name: "Hybrid Resampling"
+    description: "Balance all classes to median size using over/under sampling."
+    method: "resampling"
+    resampling:
+      submethod: "hybrid"
+      hybrid:
+        subsubmethod: "HybridSampler"
+        HybridSampler:
+          scope: "species"
+          strategy: "median"
+          target_size: None
+          random_state: 42
+      oversampling: None
+      undersampling: None
+      bootstrapping: None
 
-PP08:
-  name: "Bootstrap Sampling"
-  description: "Sample with replacement from the full dataset."
-  method: "resampling"
-  resampling:
-    submethod: "bootstrapping"
-    bootstrapping:
-      subsubmethod: "BootstrapSampler"
-      BootstrapSampler:
-        scope: "species"
-        n_samples: None
-        random_state: 42
-    oversampling: None
-    undersampling: None
-    hybrid: None
+  PP08:
+    name: "Bootstrap Sampling"
+    description: "Sample with replacement from the full dataset."
+    method: "resampling"
+    resampling:
+      submethod: "bootstrapping"
+      bootstrapping:
+        subsubmethod: "BootstrapSampler"
+        BootstrapSampler:
+          scope: "species"
+          n_samples: None
+          random_state: 42
+      oversampling: None
+      undersampling: None
+      hybrid: None
+
+
+
 
 
 # ── MM20 : implicit shape bins → PCA ─────────────────────────────────────────
@@ -92,37 +96,72 @@ MM20:
       agg_func: "mean"
       patterns:
         geo_shape:  ["area", "roundness", "aspect"]
-        intensity:  ["mean_int", "std_int", "max_int"]
     explicit: null                    # keep the key so the schema is constant
 
-  method: "linear"                    # <- typo fixed (“linar” → linear)
-  linear:
-    submethod: "PCA"                  # only choice inside the “linear” family
-    PCA:
-      n_components: 0.95
-      whiten: false
+
+  dim_reduction:
+    method: "linear"
+    linear:
+      submethod: "PCA"
+      PCA:
+        n_components: 0.95
+        whiten: false
+    manifold: null
+    encoder: null
 
 # ── MM21 : t-SNE with binning ───────────────────────────────────────────────
-MM21:
-  name: "t-SNE with binning"
 
-  binning_cfg:
-    strategy: "implicit"
-    implicit:
-      ignore_case: true
-      agg_func: "mean"
-      patterns:
-        geo_shape:  ["area", "roundness", "aspect"]
-        intensity:  ["mean_int", "std_int", "max_int"]
-    explicit: null
+archive:
+  MM21:
+    name: "t-SNE with binning"
 
-  method: "manifold"
-  manifold:
-    submethod: "tSNE"                 # always camel-case inside YAML
-    tSNE:
-      n_components: 2
-      perplexity:    30
-      learning_rate: 200.0
-      n_iter:        1_000
-      random_state:  42
-    UMAP: null                        # stub keeps schema rectangular
+    binning_cfg:
+      strategy: "implicit"
+      implicit:
+        ignore_case: true
+        agg_func: "mean"
+        patterns:
+          geo_shape:  ["area", "roundness", "aspect"]
+      explicit: null
+
+
+    dim_reduction:
+
+      method: "manifold"
+      linear: null
+      manifold:
+        submethod: "tSNE"
+        tSNE:
+          n_components: 2
+          perplexity:    30
+          learning_rate: 200.0
+          n_iter:        1000
+          random_state:  42
+        UMAP: null
+      encoder: null
+
+## ── MM22 : UMAP with binning ───────────────────────────────────────────────
+  MM22:
+    name: "UMAP with binning"
+
+    binning_cfg:
+      strategy: "implicit"
+      implicit:
+        ignore_case: true
+        agg_func: "mean"
+        patterns:
+          geo_shape:  ["area", "roundness", "aspect"]
+      explicit: null
+
+    dim_reduction:
+      method: "manifold"
+      linear: null
+      manifold:
+        submethod: "UMAP"
+        tSNE: null
+        UMAP:
+          n_components: 2
+          n_neighbors: 15
+          min_dist: 0.1
+          metric: "euclidean"
+      encoder: null
