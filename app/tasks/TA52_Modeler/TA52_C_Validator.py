@@ -71,6 +71,33 @@ INDEX_COLS: List[str] = [
     "shotID",
 ]
 
+# ----------------------------------------------------
+# Centralized configuration for validation classifiers
+# ----------------------------------------------------
+
+PARAMS_DICT = {
+    "RF_N_ESTIMATORS": 25,
+    "RF_MAX_DEPTH": 8,
+    "RF_MAX_FEATURES": "sqrt",
+    "RF_N_BINS": 64,
+    "RF_NUM_FOLDS": 5,
+    "ACCURACY_METRIC": "balanced_accuracy", # Use balanced accuracy for imbalanced datasets, cuml specific, espacially usefull for biodata
+
+    "KNN_NUM_FOLDS": 5,
+    "KNN_N_NEIGHBORS": 5,
+
+    "MIN_SAMPLE_THRESHOLD": 20,
+
+    "HDBSCAN_MIN_CLUSTER_DEFAULT": 20,
+    "HDBSCAN_MIN_SAMPLE_THRESHOLD": 40,  # Minimal amount of rows to prevent weird cupy/HDBSCAN RapidsAI bug
+    "HDBSCAN_PERCENTILES": [5, 10, 20, 30, 40, 50, 75],  # Percentiles for adaptive min_cluster_size
+    "HDBSCAN_MIN_SAMPLES_SCALE": 0.05,
+    "HDBSCAN_MIN_SAMPLES_CEILING": 50,  # Number of folds for HDBSCAN validation
+    "HDBSCAN_MIN_SAMPLES_FLOOR": 2,  
+}
+
+
+
 
 class TA52_C_Validator:
     """Run model validation, persist metrics & embeddings."""
@@ -89,7 +116,353 @@ class TA52_C_Validator:
             `job.attrs.multi_pca_results` (dict of frac→embedding matrices)
             and encoded label columns in `job.attrs.data_num`.
         """
+
+        def step_A_check_and_prepare(job):
+            """
+            Step A – Load and validate instructions for the validator stage.
+
+            Ensures:
+            ▸ Dimensionality-reduced data exists
+            ▸ Encoder column/index/value maps are present
+            ▸ Results structures are initialized
+            ▸ Fail trail and stats blocks are updated accordingly
+
+            Returns
+            -------
+            job : ModelerJob
+                Updated job object (marked FAILED if any critical component is missing)
+            """
+            import logging
+            from time import time
+
+            t0 = time()
+            job.stats.setdefault("validation", {})
+            stats_block = job.stats["validation"]
+            scope = getattr(job.input, "scope", None)
+            bootstrap_no = getattr(job.input, "bootstrap_iteration", 0)
+
+            try:
+                # Check dim reduction output
+                if not hasattr(job.attrs, "dim_red_dict") or not isinstance(job.attrs.dim_red_dict, dict):
+                    raise ValueError("Missing or invalid dim_red_dict (no embeddings to validate)")
+
+                if not job.attrs.dim_red_dict:
+                    raise ValueError("dim_red_dict is empty — no fractions found")
+
+                # Encoder mappings required for label alignment
+                encoder = getattr(job.attrs, "encoder", None)
+                if not encoder:
+                    raise ValueError("Missing encoder in job.attrs")
+
+                if not hasattr(encoder, "cols") or not isinstance(encoder.cols, dict):
+                    raise ValueError("Missing encoder.cols mapping (str → int)")
+
+                if not hasattr(encoder, "vals") or not isinstance(encoder.vals, dict):
+                    raise ValueError("Missing encoder.vals mapping (str → cudf.Series)")
+
+                # Results structure
+                if job.attrs.results_cupy is None:
+                    job.attrs.results_cupy = {}
+
+                if bootstrap_no not in job.attrs.results_cupy:
+                    job.attrs.results_cupy[bootstrap_no] = {}
+
+                # Mark as passed
+                job.input.fail_trail.mark("validation", "step_A_check_and_prepare", "passed")
+                stats_block["step_A_check_and_prepare"] = {
+                    "status": "passed",
+                    "elapsed_time": round(time() - t0, 4),
+                    "scope": scope,
+                    "bootstrap_no": bootstrap_no,
+                    "n_fracs": len(job.attrs.dim_red_dict),
+                }
+                job.stats["validation"] = stats_block
+
+                return job
+
+            except Exception as e:
+                import traceback
+                job.status = "FAILED"
+                job.input.fail_trail.mark("validation", "step_A_check_and_prepare", f"failed: {str(e)}")
+
+                stats_block["step_A_check_and_prepare"] = {
+                    "status": "failed",
+                    "elapsed_time": round(time() - t0, 4),
+                    "error": str(e),
+                }
+                job.stats["validation"] = stats_block
+
+
+                logging.error(f"[VALIDATOR][STEP_A] Instruction check failed: {e}")
+                logging.debug(traceback.format_exc())
+                return job
+
+
+        job = step_A_check_and_prepare(job)
+        if job.status == "FAILED":
+            return job
+
+
+
+
+
         logging.debug5("[VALIDATOR] Starting validation process …")
+
+
+
+
+        def step_1_validate_the_data(job):
+            """
+            Run supervised (KNN, RF) and unsupervised (HDBSCAN) validation on all label columns
+            across bootstraps and dimension fractions.
+
+            Parameters
+            ----------
+            job : ModelerJob
+                The current job object containing encoded embeddings and metadata.
+
+            Returns
+            -------
+            job : ModelerJob
+                The updated job with classification + clustering results stored.
+            """
+
+
+            from app.tasks.TA52_Modeler.utils.TA52_C_utils.knn_validation_classifier import knn_validation_classifier
+            from app.tasks.TA52_Modeler.utils.TA52_C_utils.rf_validation_classifier import rf_validation_classifier
+            from app.tasks.TA52_Modeler.utils.TA52_C_utils.hdb_validation_classifier import hdb_validation_classifier
+
+            for frac, result_dict in job.attrs.dim_red_dict.items():
+                for bootstrap_no , result in result_dict.items():
+                    
+                    Z_raw: cp.ndarray = result["Z"]
+                    col_map = result["col_map"]
+                    end_idx = col_map["index"]["end_idx"]
+                    
+                    # Extract full index block + reduced feature block
+                    index_col_names = col_map["index"]["input"]
+                    y_cols: cp.ndarray = Z_raw[:, :end_idx]
+                    Z: cp.ndarray = Z_raw[:, end_idx:]
+                    
+                    validation_col_count = Z.shape[1]
+                    validation_row_count = Z.shape[0]#
+                    inital_col_count = job.attrs.raw_data.shape[1]
+                    inital_row_count = job.attrs.raw_data.shape[0]
+
+
+                    for idx, label in enumerate(index_col_names):
+
+                        if job.attrs.uniques is None:
+                            job.attrs.uniques = {}
+
+                        job.attrs.uniques.setdefault(label, {}).setdefault(frac, {})
+                        
+                        job.attrs.uniques[label][frac][bootstrap_no] = TA52_C_Validator.compute_uniques_from_y_cols(
+                                                                                                    y_cols=y_cols,
+                                                                                                    col_map=col_map
+                                                                                                )
+ 
+
+                        y_col = y_cols[:, idx]
+                        logging.debug1(f"[VALIDATOR] Starting KNN-Validation with label='{label}' @ frac={frac:.2f} (bootstrap={bootstrap_no})")
+                        job = knn_validation_classifier(job, Z, y_col, label, frac,)
+                        logging.debug1(f"[VALIDATOR] Completed KNN-Validation with label='{label}' @ frac={frac:.2f} (bootstrap={bootstrap_no})")
+                        logging.debug1(f"[VALIDATOR] Starting RF-Validation with label='{label}' @ frac={frac:.2f} (bootstrap={bootstrap_no})")
+                        job = rf_validation_classifier(job, Z, y_col, label, frac,)
+                        logging.debug1(f"[VALIDATOR] Completed RF-Validation with label='{label}' @ frac={frac:.2f} (bootstrap={bootstrap_no})")
+                        #logging.debug1(f"[VALIDATOR] Starting HDBSCAN-Validation with label='{label}' @ frac={frac:.2f} (bootstrap={bootstrap_no})")
+                      
+
+                        #job = hdb_validation_classifier(job, Z, y_col, label, frac,)
+                        #logging.debug1(f"[VALIDATOR] Completed HDBSCAN-Validation with label='{label}' @ frac={frac:.2f} (bootstrap={bootstrap_no})")
+
+                        job.attrs.validation_results_dict \
+                            .setdefault(bootstrap_no, {}) \
+                            .setdefault(label, {}) \
+                            .setdefault(frac, {})['meta_data'] = {
+                                "scope": job.input.scope,
+                                "label": label,
+                                "frac": frac,
+                                "bootstrap": bootstrap_no,
+                                "validation_col_count": validation_col_count,
+                                "validation_row_count": validation_row_count,
+                                "inital_col_count": inital_col_count,
+                                "inital_row_count": inital_row_count
+                            }
+
+            try:
+                job.attrs.validation_results_df = TA52_C_Validator.build_validation_results_df(job)
+
+            except Exception as e:
+                logging.error(f"[VALIDATOR] Failed to build validation results DataFrame: {e}")
+                job.status = "FAILED"
+                job.input.fail_trail.mark("validation", "build_validation_results_df", f"failed: {str(e)}")
+                return job
+            
+
+            return job
+
+        job = step_1_validate_the_data(job)
+        if job.status == "FAILED":
+            logging.error("[VALIDATOR] Step 1 failed, exiting early.")
+            return job
+
+
+        logging.debug5("[VALIDATOR] Step 1 completed successfully, proceeding to UMAP extraction.")    
+        return job
+    
+        
+
+
+
+
+
+
+
+
+
+    def compute_uniques_from_y_cols(
+        y_cols: cp.ndarray,
+        col_map: dict
+    ) -> dict:
+        """
+        Compute number of unique values and entropy for each retained index column.
+
+        Parameters
+        ----------
+        y_cols : cp.ndarray
+            The index block extracted from Z_raw[:, :end_idx].
+        col_map : dict
+            col_map["index"]["input"] = {int → str} mapping from column index to label name.
+
+        Returns
+        -------
+        dict
+            Dictionary with keys like "family_n_unique", "family_entropy", ..., plus "n_rows".
+        """
+        uniques = {}
+
+        def compute_entropy(col):
+            _, counts = cp.unique(col, return_counts=True)
+            probs = counts / counts.sum()
+            return float(-cp.sum(probs * cp.log2(probs)))
+
+        for idx, col_name in enumerate(col_map["index"]["input"]):
+            col = y_cols[:, idx]
+            n_unique = int(cp.unique(col).shape[0])
+            entropy = compute_entropy(col)
+
+            uniques[f"{col_name}_n_unique"] = n_unique
+            uniques[f"{col_name}_entropy"] = entropy
+
+        uniques["n_rows"] = int(y_cols.shape[0])
+        return uniques
+
+
+
+    def build_validation_results_df(job) -> pd.DataFrame | None:
+        """
+        Convert `job.attrs.validation_results` into a flat DataFrame.
+
+        Each row represents a (bootstrap, label, frac) result and contains:
+            - accuracy scores (rf, knn)
+            - clustering metrics (ARI, NMI, Silhouette) including HDBSCAN variants
+            - metadata: scope, label, frac, bootstrap, DoE_UUID
+            - unique counts from job.attrs.uniques
+
+        Parameters
+        ----------
+        job : ModelerJob
+
+        Returns
+        -------
+        pd.DataFrame or None
+        """
+        import pandas as pd
+        import logging
+
+        results = job.attrs.validation_results_dict
+        scope = getattr(job.input, "scope", "default_scope")
+        uuid = getattr(job, "job_uuid", "unknown")
+        parent_uuid = job.parent_job_uuids[0] if job.parent_job_uuids else uuid
+
+        if not results:
+            logging.debug2(f"[RESULTS] No validation_results to export for job {uuid}")
+            return None
+
+        records = []
+
+        for bootstrap, labels_dict in results.items():
+            for label, fracs_dict in labels_dict.items():
+                for frac, metrics in fracs_dict.items():
+                    # Pull unique counts if available
+                    uniques_dict = (
+                        job.attrs.uniques
+                        .get(label, {})
+                        .get(frac, {})
+                        .get(bootstrap, {})
+                        if job.attrs.uniques else {}
+                    )
+
+                    row = {
+                        "DoE_UUID": parent_uuid,
+                        "scope": scope,
+                        "job_uuid": uuid,
+                        "bootstrap": bootstrap,
+                        "frac": frac,
+                        "label": label,
+                        "rf_acc": metrics.get("rf_acc"),
+                        "knn_acc": metrics.get("knn_acc"),
+                        "initial_col_count": metrics["meta_data"].get("inital_col_count"),
+                        "initial_row_count": metrics["meta_data"].get("inital_row_count"),
+                        "validation_col_count": metrics["meta_data"].get("validation_col_count"),
+                        "validation_row_count": metrics["meta_data"].get("validation_row_count"),
+                    }
+
+                    # Dynamically extract any HDBSCAN variants present
+                    for key, val in metrics.items():
+                        if key.startswith("ari_") or key.startswith("nmi_") or key.startswith("silhouette_"):
+                            row[key] = val
+
+                    row.update(uniques_dict)
+                    records.append(row)
+                    
+                    
+                    if "n_rows" in row:
+                        del row["n_rows"]
+
+
+
+
+
+        if not records:
+            logging.debug2(f"[RESULTS] No metrics extracted for job {uuid}")
+            return None
+
+        return pd.DataFrame.from_records(records)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         data_sweep: Dict[float, Dict[str, Any]] = job.attrs.multi_pca_results
         index_cols: List[str] = job.attrs.blacklist["index_cols"]
@@ -140,6 +513,61 @@ class TA52_C_Validator:
         logging.debug5("[VALIDATOR] Validation process completed.")
         return job
 
+
+
+def step_2_extract_embeddings(job: ModelerJob) -> ModelerJob:
+            """
+            Run best/worst UMAP comparison and attach results to job.
+
+            Parameters
+            ----------
+            job : ModelerJob
+
+            Returns
+            -------
+            job : ModelerJob
+                Modified job with .attrs.umap_df attached (or None if failed)
+            """
+            from app.tasks.TA52_Modeler.utils.TA52_C_utils.UMAP_clustering import generate_comparative_umap_embeddings
+
+
+            try:
+                df_result = generate_comparative_umap_embeddings(job)
+                job.attrs.umap_df = df_result
+                if df_result is not None:
+                    logging.debug1(f"[UMAP] Stored {len(df_result)} embeddings for job {job.job_uuid}")
+                else:
+                    job.input.fail_trail.mark_validation(
+                        bootstrap=getattr(job.input, "bootstrap_iteration", 0),
+                        label="ALL",
+                        frac="ALL",
+                        model="umap",
+                        status="skipped",
+                        error="No valid rows for UMAP embedding"
+                    )
+            except Exception as e:
+                logging.error(f"[UMAP] Full embedding process failed for job {job.job_uuid}: {e}")
+                job.input.fail_trail.mark_validation(
+                    bootstrap=getattr(job.input, "bootstrap_iteration", 0),
+                    label="ALL",
+                    frac="ALL",
+                    model="umap",
+                    status="failed",
+                    error=str(e)
+                )
+                job.attrs.umap_df = None
+
+            return job
+
+
+
+
+
+    
+def legacy():
+    
+    
+    
     # ------------------------------------------------------------------
     # Internal helpers – supervised evaluation
     # ------------------------------------------------------------------
@@ -235,6 +663,8 @@ class TA52_C_Validator:
 
             job.attrs.results_cupy.setdefault(label, {}).setdefault(frac, {})
             job.attrs.results_cupy[label][frac]['rf_acc'] = mean_rf
+
+
 
 
 
@@ -480,49 +910,8 @@ class TA52_C_Validator:
     
     
     
-    @staticmethod
-    def store_job_result(job: ModelerJob) -> None:
-        """Convert nested `results_cupy` into a flat DataFrame and persist."""
-        records: List[Dict[str, Any]] = []
-        scope = getattr(job.input, "scope", "default_scope")
-        perf_dict: Dict[str, Dict[float, Dict[str, float]]] = (
-            job.attrs.results_cupy if job.attrs.results_cupy is not None else {}
-        )
 
 
-        for label, frac_metrics in perf_dict.items():
-            for frac, metrics in frac_metrics.items():
-                uniques_dict = (
-                    job.attrs.uniques.get(label, {}).get(frac, {}) if job.attrs.uniques else {}
-                )
-
-                row = {
-                    "DoE_UUID": job.parent_job_uuids[0],
-                    "scope": scope,
-                    "frac": frac,
-                    "label": label,
-                    "randomforest_acc": metrics.get("rf_acc"),
-                    "knn_acc": metrics.get("knn_acc"),
-                    "hdbscan_ari_default": metrics.get("ari_default"),
-                    "hdbscan_ari_adaptive": metrics.get("ari_adaptive"),
-                    "hdbscan_nmi_default": metrics.get("nmi_default"),
-                    "hdbscan_nmi_adaptive": metrics.get("nmi_adaptive"),
-                    "hdbscan_silhouette_default": metrics.get("silhouette_default"),
-                    "hdbscan_silhouette_adaptive": metrics.get("silhouette_adaptive"),
-           
-                }
-
-                row.update(uniques_dict)  # merge in unique counts
-                records.append(row)
-
-
-        if not records:
-            logging.debug2(f"[RESULTS] No metrics to store for job {job.job_uuid}")
-            job.status = "FAILED"
-            return
-
-        df = pd.DataFrame.from_records(records)
-        return df
        
 
 

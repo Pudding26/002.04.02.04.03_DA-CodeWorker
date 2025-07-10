@@ -24,6 +24,7 @@ class LobbyHandler:
             if orchestrator is None:
                 continue
 
+
             job_df_raw = self.check_for_jobs(job_type=job_type)
             if job_df_raw.empty:
                 print(f"No jobs found for job type: {job_type}")
@@ -59,7 +60,7 @@ class LobbyHandler:
         Fetch all jobs for the given job_type with status=in_progress.
         """
         filter_model = FilterModel.from_human_filter(
-            {"contains": {"status": "ready", "job_type": job_type}}
+            {"contains": {"status": "READY", "job_type": job_type}}
         )
         return WorkerJobs_Out.fetch(
             filter_model=filter_model,

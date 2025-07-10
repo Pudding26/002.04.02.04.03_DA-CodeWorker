@@ -75,7 +75,8 @@ uvloop==0.21.0
 watchfiles==1.1.0
 websockets==15.0.1
 imbalanced-learn==0.13.0
-torch==2.3.0+cu121
-torchvision==0.18.0+cu121
-torchaudio==2.3.0+cu121
+# torch installed via Dockerfile with CUDA support
+#torch==2.3.0+cu121
+#torchvision==0.18.0+cu121
+#torchaudio==2.3.0+cu121
 umap-learn==0.5.1

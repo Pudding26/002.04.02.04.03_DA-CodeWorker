@@ -78,8 +78,8 @@ class TA41_0_SegmentationOrchestrator(TaskBase):
 
         filter_model = FilterModel.from_human_filter({"contains": 
                                                       {
-                                                            #"status": "ready", 
-                                                            "job_type": "segmenter"
+                                                        "status": "READY", 
+                                                        "job_type": "segmenter"
                                                        }})
         
         

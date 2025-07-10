@@ -26,6 +26,7 @@ class StackDataLoader:
         cached_stack_ids = set(self._wide_cache["stackID"]) if not self._wide_cache.empty else set()
         uncached_ids = [sid for sid in stack_ids if sid not in cached_stack_ids]
 
+
         if uncached_ids:
             logging.debug2(f"[STACK FETCH] Fetching {len(uncached_ids)} new stackIDs from DB.")
 
@@ -43,8 +44,17 @@ class StackDataLoader:
                 df_wide = self.reshape_segmentation_long_to_wide(df_long)
                 df_wide["sampleID"] = df_wide["stackID"].str.split("_").apply(lambda parts: "_".join(parts[:-1]))
                 index_cols = self.get_index_columns(set(df_wide["sampleID"]))
+
+                if index_cols.empty:
+                    logging.warning(f"[STACK FETCH] No index columns found for samples: {set(df_wide['sampleID'])}")
+                    # Possibly decide how to proceed. You could skip merge or raise exception.
+                    # For now, we skip merging:
+                    return pd.DataFrame()  # or df_wide without merge, depending on your needs
+
+
                 df_wide = pd.merge(df_wide, index_cols, on=["sampleID"], how="left")
 
+                
                 
                 self._wide_cache = (
                     pd.concat([self._wide_cache, df_wide], axis=0, ignore_index=True)
@@ -56,6 +66,7 @@ class StackDataLoader:
         # Step 2: serve from cache
         result = self._wide_cache.query("stackID in @stack_ids").copy()
         return result
+
 
     @staticmethod
     def reshape_segmentation_long_to_wide(df_long: pd.DataFrame) -> pd.DataFrame:

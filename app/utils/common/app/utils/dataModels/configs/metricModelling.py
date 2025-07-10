@@ -25,9 +25,7 @@ class PCAParams(BaseModel):
     n_components: float | int = Field(0.95, ge=0)
     whiten: bool = False
 
-class LinearFamily(BaseModel):
-    submethod: Literal["PCA"]
-    PCA: Optional[PCAParams] = None
+
 
 # ─────────── MANIFOLD (t-SNE / UMAP) ───────────────────────────────
 class TSNEParams(BaseModel):
@@ -43,10 +41,7 @@ class UMAPParams(BaseModel):
     min_dist:     float = 0.1
     metric:       str   = "euclidean"
 
-class ManifoldFamily(BaseModel):
-    submethod: Literal["tSNE", "UMAP"]
-    tSNE: Optional[TSNEParams] = None
-    UMAP: Optional[UMAPParams] = None
+
 
 # ─────────── ENCODER (Seg / Img) ───────────────────────────────────
 class AutoencoderSegParams(BaseModel):
@@ -62,28 +57,18 @@ class AutoencoderImgParams(BaseModel):
     dropout:    float = 0.0
     aug_strength: float = Field(0.0, ge=0, le=1)
 
-class EncoderFamily(BaseModel):
-    submethod: Literal["AutoencoderSeg", "AutoencoderImg"]
-    AutoencoderSeg: Optional[AutoencoderSegParams] = None
-    AutoencoderImg: Optional[AutoencoderImgParams] = None
+
 
 # ─────────── MASTER DIM-RED Params ─────────────────────────────────
 class DimReductionCfg(BaseModel):
-    method: Literal["linear", "manifold", "encoder"]
-    linear:    Optional[LinearFamily]    = None
-    manifold:  Optional[ManifoldFamily]  = None
-    encoder:   Optional[EncoderFamily]   = None
+    method: Literal["PCA", "t-SNE", "UMAP", "AutoencoderSeg", "AutoencoderImg"]
+    PCA: Optional[PCAParams] = None
+    t_SNE: Optional[TSNEParams] = None
+    UMAP: Optional[UMAPParams] = None
+    AutoencoderSeg: Optional[AutoencoderSegParams] = None
+    AutoencoderImg: Optional[AutoencoderImgParams] = None
 
-    @model_validator(mode="after")
-    def check_chosen_block(self):
-        m = self.method
-        if m == "linear" and not self.linear:
-            raise ValueError("linear block missing")
-        if m == "manifold" and not self.manifold:
-            raise ValueError("manifold block missing")
-        if m == "encoder" and not self.encoder:
-            raise ValueError("encoder block missing")
-        return self
+
 
 
 class BinningCfg(BaseModel):
