@@ -1,6 +1,6 @@
 {
   "name": "DA_GPU_Worker",
-  "dockerComposeFile": "../docker-compose.yaml",
+  "dockerComposeFile": "../docker-compose_runpod.yaml",
   "service": "s003-c9603_lele-da-worker",
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",

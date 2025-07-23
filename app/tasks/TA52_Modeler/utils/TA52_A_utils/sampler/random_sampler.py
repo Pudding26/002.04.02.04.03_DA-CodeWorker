@@ -1,3 +1,4 @@
+import logging
 def random_sampler(job):
     """
     Generalized random sampler that supports:
@@ -24,7 +25,7 @@ def random_sampler(job):
     if p is None:
         raise ValueError("Missing RandomSampler configuration block")
 
-    X = job.attrs.data_num
+    X = job.attrs.data_train
     idx = int(job.input.index_col)
     labels = X[:, idx]
 
@@ -45,6 +46,16 @@ def random_sampler(job):
         target = int(strategy)
     else:
         raise ValueError(f"Unsupported sampling strategy: {strategy}")
+
+    logging.debug2(
+        f"[RANDOM_SAMPLER] unique_ids={unique_ids.tolist()} "
+        f"counts={[int(c) for c in counts.tolist()]}"
+    )
+    logging.debug2(
+        f"[RANDOM_SAMPLER] strategy={strategy} "
+        f"→ target={target} rows"
+    )
+
 
     result = []
     for label in unique_ids.tolist():

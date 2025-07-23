@@ -7,7 +7,7 @@ import numpy as np
 
 def binning(job):
     """
-    Performs feature binning on the job's numeric data matrix (`job.attrs.data_num`) using
+    Performs feature binning on the job's numeric data matrix (`job.attrs.data_train`) using
     the binning configuration defined in `job.input.metricModel_instructions.binning_cfg`.
 
     Supports both explicit and implicit binning strategies:
@@ -44,7 +44,7 @@ def binning(job):
 
 
 
-    X = job.attrs.data_num  # assumed to be numpy or cupy ndarray
+    X = job.attrs.data_train  # assumed to be numpy or cupy ndarray
     bin_cfg = job.input.metricModel_instructions.binning_cfg
     name2idx = job.attrs.encoder.cols                   # {col_name: index}
     idx2name = {v: k for k, v in name2idx.items()}      # {index: col_name}
@@ -126,7 +126,8 @@ def binning(job):
         #)
 
     # "rest" bin (unassigned columns)
-    unassigned_cols = sorted(set(all_col_names) - assigned_cols)
+
+    unassigned_cols = sorted(set(all_col_names) - set(assigned_cols) - set(index_cols))
     if unassigned_cols:
         rest_idx = [name2idx[c] for c in unassigned_cols]
         bin_X = X[:, rest_idx]

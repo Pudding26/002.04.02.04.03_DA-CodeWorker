@@ -17,7 +17,7 @@ def qm_pre_sampling(job, min_classes=2, min_per_class=5, min_rows=20):
     ----------
     job : ModelerJob
         Job object containing:
-          - `attrs.data_num` : CuPy array of numeric data
+          - `attrs.data_train` : CuPy array of numeric data
           - `input.index_col` : Integer or string indicating the active class/scope column
           - `input.scope` : Used for logging (e.g., 'species', 'region')
           - `attrs.encoder_vals` : Optional label-encoded class metadata
@@ -60,7 +60,7 @@ def qm_pre_sampling(job, min_classes=2, min_per_class=5, min_rows=20):
     import cupy as cp
     import logging
     
-    X = job.attrs.data_num
+    X = job.attrs.data_train
     scope_col_idx = int(job.input.index_col)  # Dynamic scope-aware index
     y = X[:, scope_col_idx]
 
@@ -72,30 +72,30 @@ def qm_pre_sampling(job, min_classes=2, min_per_class=5, min_rows=20):
         keep_mask = cp.isin(y, keep_labels)
         dropped = int(X.shape[0] - cp.sum(keep_mask).item())
 
-        job.attrs.data_num = X[keep_mask]
+        job.attrs.data_train = X[keep_mask]
         if hasattr(job.attrs, "encoder_vals") and job.attrs.encoder_vals is not None:
             job.attrs.encoder_vals = job.attrs.encoder_vals[keep_mask]
 
         logging.warning(f"[QM-PRE] Dropped {dropped} rows with underrepresented classes (<{min_per_class}) in scope='{job.input.scope}'")
 
         # Recalculate y and class distribution
-        y = job.attrs.data_num[:, scope_col_idx]
+        y = job.attrs.data_train[:, scope_col_idx]
         labels, counts = cp.unique(y, return_counts=True)
         job.stats.setdefault("preprocessing", {})["qm_pre_sampling"] = {
             "scope_col": job.input.scope,
             "scope_col_idx": int(scope_col_idx),
             "dropped_rows": int(dropped),
-            "remaining_rows": int(job.attrs.data_num.shape[0]),
+            "remaining_rows": int(job.attrs.data_train.shape[0]),
             "remaining_classes": int(len(labels)),
             "class_distribution": {
                 int(l): int(c) for l, c in zip(labels.tolist(), counts.tolist())
             }
         }
 
-    if job.attrs.data_num.shape[0] < min_rows:
+    if job.attrs.data_train.shape[0] < min_rows:
         job.status = "FAILED"
-        logging.warning(f"[QM-PRE] FAIL – total rows = {job.attrs.data_num.shape[0]} < {min_rows} after cleaning")
-        job.input.fail_trail.mark("preprocessing", "qm_pre_sampling", f"Too few rows: {job.attrs.data_num.shape[0]}")
+        logging.warning(f"[QM-PRE] FAIL – total rows = {job.attrs.data_train.shape[0]} < {min_rows} after cleaning")
+        job.input.fail_trail.mark("preprocessing", "qm_pre_sampling", f"Too few rows: {job.attrs.data_train.shape[0]}")
         return job
 
     if len(labels) < min_classes:

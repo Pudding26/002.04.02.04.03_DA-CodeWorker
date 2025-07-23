@@ -219,6 +219,22 @@ class LoggingHandler:
 logging.debug1 = lambda message, *args, **kwargs: logging.getLogger().debug1(message, *args, **kwargs)
 logging.debug2 = lambda message, *args, **kwargs: logging.getLogger().debug2(message, *args, **kwargs)
 logging.debug3 = lambda message, *args, **kwargs: logging.getLogger().debug3(message, *args, **kwargs)
-logging.debug4 = lambda message, *args, **kwargs: logging.getLogger().debug(message, *args, **kwargs)
+logging.debug4 = lambda message, *args, **kwargs: logging.getLogger().debug4(message, *args, **kwargs)
 logging.debug5 = lambda message, *args, **kwargs: logging.getLogger().debug5(message, *args, **kwargs)
 
+
+
+def status(self, level, message, overwrite=False, *args, **kwargs):
+    if overwrite:
+        print(f"\r{message}", end="", flush=True)
+    else:
+        self.log(level, message, *args, **kwargs)
+
+logging.Logger.status = status
+
+def debug2_status(message, overwrite=False, *args, **kwargs):
+    logger = logging.getLogger()
+    logger.status(DEBUG2_LEVEL, message, overwrite=overwrite, *args, **kwargs)
+
+
+logging.debug2_status = debug2_status

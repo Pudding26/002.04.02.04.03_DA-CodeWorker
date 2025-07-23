@@ -1,0 +1,32 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Start cloudflared tunnel",
+        "type": "shell",
+        "command": "./entrypoint_debug.sh",
+        "options": {
+          "cwd": "${workspaceFolder}"
+        },
+        "isBackground": true,  // Important so launch.json can continue after start!
+        "problemMatcher": [
+          {
+            "pattern": [
+              {
+                "regexp": ".",
+                "file": 1,
+                "location": 2,
+                "message": 3
+              }
+            ],
+            "background": {
+              "activeOnStart": true,
+              "beginsPattern": ".",
+              "endsPattern": "."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  

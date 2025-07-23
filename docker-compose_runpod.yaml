@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  s003-c9603_lele-da-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: s003-c9603_lele-da-worker
+    env_file:
+      - .env
+    network_mode: "bridge"  
+    restart: unless-stopped
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    ports:
+      - "8000:8000" 
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+

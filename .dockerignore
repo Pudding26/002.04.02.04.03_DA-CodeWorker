@@ -4,5 +4,7 @@ __pycache__/
 *.pyd
 *.log
 *.tmp
+*.env
 #.vscode/
 .git/
+.env

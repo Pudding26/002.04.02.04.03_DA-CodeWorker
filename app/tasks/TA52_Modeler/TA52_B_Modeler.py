@@ -15,6 +15,11 @@ import umap                            # cpu fallback
 
 
 
+### QM_Sampling
+MIN_CLASSES = 2
+MIN_PER_CLASS = 3
+MIN_ROWS = 40
+
 FRACTIONS = [0.01, 0.02, 0.025, 0.03, 0.035, 0.05, 0.075, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 1.0]
 
 
@@ -28,6 +33,7 @@ class TA52_B_Modeler:
         def step_A_check_config(job):
             """
             Step A – Validates DR config and logs method + parameters.
+            Now compatible with enhanced failtrail logic.
             """
             t0 = time.time()
             try:
@@ -39,7 +45,12 @@ class TA52_B_Modeler:
                 method_cfg = getattr(dr_cfg, method_key, None)
 
                 if method_cfg is None:
-                    raise ValueError(f"Missing config block for method: {method}")
+                    job.status = "FAILED"
+                    job.input.fail_trail.mark(
+                        "modelling", "check_config", "failed",
+                        error=f"Missing config block for method: {method}"
+                    )
+                    return job
 
                 # Build logging context
                 job.context = f"DimReduction → {method}"
@@ -55,15 +66,31 @@ class TA52_B_Modeler:
                     "config_check_s": round(time.time() - t0, 4),
                 })
 
-                # Mark success
+                # 🔔 Validate resampling config
+                res_cfg = getattr(job.input.preProcessing_instructions, "resampling", None)
+                if res_cfg:
+                    if not hasattr(res_cfg, "method") or res_cfg.method not in ["RandomSampler", "SMOTESampler", None]:
+                        job.status = "FAILED"
+                        job.input.fail_trail.mark(
+                            "modelling", "resampling_config", "failed",
+                            error=f"Invalid sampler config: {res_cfg.method}"
+                        )
+                        return job
+                else:
+                    logging.debug2("[MODELER] No resampling config provided, skipping sampler validation.")
+
+                # ✅ Mark success explicitly
                 job.input.fail_trail.mark("modelling", "check_config", "passed")
                 return job
 
             except Exception as e:
-                logging.error(f"[MODELER][CONFIG] Failed to parse method config: {e}", exc_info=True)
+                logging.error(f"[MODELER][CONFIG] Unexpected error: {e}", exc_info=True)
 
                 job.status = "FAILED"
-                job.input.fail_trail.mark("modelling", "check_config", f"failed: {e}")
+                job.input.fail_trail.mark(
+                    "modelling", "check_config", "error",
+                    error=f"Exception: {e}"
+                )
 
                 job.stats.setdefault("modelling", {})
                 job.stats["modelling"].update({
@@ -73,12 +100,153 @@ class TA52_B_Modeler:
 
                 return job
 
+
         job = step_A_check_config(job)
         if job.status == "FAILED":
             return job
         
 
-        # step_01_binning.py
+        @staticmethod
+        def step00_sampling(job):
+            """
+            Step 00 – Sampling: Applies the specified sampling method to the dataset.
+
+            This step performs data sampling based on the preProcessing_instructions:
+            ▸ Uses the configured method (e.g., resampling, undersampling, oversampling)
+            ▸ Applies the submethod and subsubmethod as defined in the job's input config
+            ▸ Handles quality management before sampling to ensure data integrity
+
+            Parameters
+            ----------
+            job : ModelerJob
+                The current job with:
+                - `attrs.data_train`: CuPy ndarray of numeric data
+                - `input.preProcessing_instructions`: Configuration for sampling
+
+            Returns
+            -------
+            job : ModelerJob
+                Modified job with sampled data in `attrs.data_train`, or marked as FAILED on error.
+            """
+
+            from app.tasks.TA52_Modeler.utils.TA52_A_utils.qm_pre_sampling import qm_pre_sampling
+            from app.tasks.TA52_Modeler.utils.TA52_A_utils.sampler.random_sampler import random_sampler
+            from app.tasks.TA52_Modeler.utils.TA52_A_utils.sampler.SMOTE_sampler import smote_sampler
+
+            t0 = time.time()
+            shape_before = list(job.attrs.data_train.shape)
+
+            try:
+                logging.debug2("Starting sampling...")
+                logging.debug1("Pre-sampling quality management...")
+
+                # --- Quality check before sampling
+                job = qm_pre_sampling(
+                    job,
+                    min_classes=MIN_CLASSES,
+                    min_per_class=MIN_PER_CLASS,
+                    min_rows=MIN_ROWS
+                )
+                if job.status == "FAILED":
+                    #job.input.fail_trail.mark(
+                    #    "preprocessing", "qm_pre_sampling", "failed",
+                    #    error="QM check failed"
+                    #)
+                    return job
+
+                job.input.fail_trail.mark("preprocessing", "qm_pre_sampling", "passed")
+                logging.debug1("Pre-sampling quality management passed.")
+
+                # --- Retrieve sampling config
+                cfg = getattr(job.input.preProcessing_instructions, "resampling", None)
+                if not cfg or not cfg.method:
+                    logging.debug2("No sampling method configured. Skipping sampling step.")
+                    elapsed = round(time.time() - t0, 3)
+                    job.stats["preprocessing"]["step_F_sampling"] = {
+                        "elapsed_time": elapsed,
+                        "shape_initial": shape_before,
+                        "shape_after": shape_before,
+                        "shape_change": [0, 0],
+                        "sampler_method": "none",
+                        "scope": job.input.scope
+                    }
+                    job.stats["preprocessing"]["total_elapsed_time"] = round(
+                        job.stats["preprocessing"].get("total_elapsed_time", 0.0) + elapsed, 3
+                    )
+                    job.input.fail_trail.mark("preprocessing", "sampling", "skipped")
+                    return job
+
+                sampler_method = cfg.method
+                sampler_cfg = getattr(cfg, sampler_method, None)
+                if sampler_cfg is None:
+                    job.status = "FAILED"
+                    job.input.fail_trail.mark(
+                        "preprocessing", "sampling", "failed",
+                        error=f"Sampler config block for '{sampler_method}' is missing"
+                    )
+                    return job
+
+                logging.debug2(f"Applying sampler: {sampler_method} with scope: {job.input.scope}")
+
+                # --- Dispatch sampler
+                match sampler_method:
+                    case "RandomSampler":
+                        X_out = random_sampler(job)
+                    case "SMOTESampler":
+                        X_out, job = smote_sampler(job)
+                    case _:
+                        job.status = "FAILED"
+                        job.input.fail_trail.mark(
+                            "preprocessing", "sampling", "failed",
+                            error=f"Unsupported sampler method: {sampler_method}"
+                        )
+                        return job
+
+                # --- Apply result
+                job.attrs.data_train = X_out
+                shape_after = list(job.attrs.data_train.shape)
+                elapsed = round(time.time() - t0, 3)
+
+                job.stats["preprocessing"]["step_F_sampling"] = {
+                    "elapsed_time": elapsed,
+                    "shape_initial": shape_before,
+                    "shape_after": shape_after,
+                    "shape_change": [
+                        shape_after[0] - shape_before[0],
+                        shape_after[1] - shape_before[1]
+                    ],
+                    "sampler_method": sampler_method,
+                    "scope": job.input.scope
+                }
+                job.stats["preprocessing"]["total_elapsed_time"] = round(
+                    job.stats["preprocessing"].get("total_elapsed_time", 0.0) + elapsed, 3
+                )
+
+                mode = getattr(sampler_cfg, "mode", "unknown")
+                
+                job.input.fail_trail.mark("preprocessing", "sampling", "passed")
+                logging.debug2(f"Sampling completed in {elapsed}s. Shape change: {shape_before} -> {shape_after} with config: '{mode}'")
+                return job
+
+            except Exception as e:
+                logging.error(
+                    f"[PREPROCESS ERROR] Sampling step failed for job {getattr(job, 'id', 'unknown')}: {e}",
+                    exc_info=True
+                )
+                job.status = "FAILED"
+                job.input.fail_trail.mark(
+                    "preprocessing", "sampling", "error",
+                    error=f"Exception during sampling: {str(e)}"
+                )
+                return job
+
+
+            
+
+        job = step00_sampling(job)
+        if job.status == "FAILED":
+            return job
+
 
 
 
@@ -115,6 +283,7 @@ class TA52_B_Modeler:
             binning_stats = job.stats["modelling"]["binning"]
 
             try:
+                logging.debug2("Starting binning step...")
                 job = binning(job)
                 bin_cfg = job.input.metricModel_instructions.binning_cfg
                 strategy = bin_cfg.strategy
@@ -134,11 +303,12 @@ class TA52_B_Modeler:
                 job.stats["modelling"]["binning_s"] = round(time.time() - t0, 4)
 
                 job.input.fail_trail.mark("modelling", "binning", "passed")
+                logging.debug2(f"Binning completed in {job.stats['modelling']['binning_s']}s")
                 return job
 
             except Exception as e:
                 job.status = "FAILED"
-                job.input.fail_trail.mark("modelling", "binning", f"failed: {e}")
+                job.input.fail_trail.mark("modelling", "binning", "failed:", e)
                 job.stats["modelling"]["binning_s"] = round(time.time() - t0, 4)
                 return job
 
@@ -163,6 +333,7 @@ class TA52_B_Modeler:
             - job.stats["modelling"]["dim_reduction_s"]: timing
             """
             from app.tasks.TA52_Modeler.utils.TA52_B_utils.reducer.multi_PCA import multi_PCA
+            logging.debug2("Starting dimensionality reduction step...")
 
 
             t0 = time.time()
@@ -194,12 +365,14 @@ class TA52_B_Modeler:
 
                 job.input.fail_trail.mark("modelling", "dim_reduction", "passed")
                 job.stats["modelling"]["dim_reduction_s"] = round(time.time() - t0, 4)
+                
+                logging.debug2(f"Dimensionality reduction completed in {job.stats['modelling']['dim_reduction_s']}s")
                 return job
 
 
             except Exception as e:
                 job.status = "FAILED"
-                job.input.fail_trail.mark("modelling", "dim_reduction", f"failed: {e}")
+                job.input.fail_trail.mark("modelling", "dim_reduction", "failed:", e)
                 job.stats["modelling"]["dim_reduction_s"] = round(time.time() - t0, 4)
                 return job
 
@@ -232,7 +405,9 @@ class TA52_B_Modeler:
             job : Job
                 The same job object with job.stats["modelling_summary"] attached
             """
+
             try:
+                logging.debug2("Starting wrapup step for modelling ...")
                 dim_red_dict = job.attrs.dim_red_dict
                 method = getattr(job.input.metricModel_instructions.dim_reduction_cfg, "method", "unknown")
                 bootstrap_no = getattr(job.input, "bootstrap_iteration", None)
@@ -276,6 +451,9 @@ class TA52_B_Modeler:
                     "n_bootstrap": bootstrap_no,
                     **col_stats_summary
                 }
+                job.input.fail_trail.mark("modelling", "wrapup", "passed")
+                logging.debug2(f"Wrapup completed successfully. Summary")
+                logging.debug1(f"Modelling summary: {job.stats['modelling_summary']}")
 
             except Exception as e:
                 import traceback
@@ -284,9 +462,9 @@ class TA52_B_Modeler:
                     "error": f"Wrapup failed: {e}",
                     "traceback": traceback.format_exc()
                 }
-                import logging
                 logging.error(f"[WRAPUP] Failed to compute modelling summary: {e}")
                 logging.debug(traceback.format_exc())
+                job.input.fail_trail.mark("modelling", "wrapup", "failed:", e)
 
             return job
 

@@ -1,41 +1,44 @@
 FROM rapidsai/base:25.06-cuda12.0-py3.10
 
-
-## Accept UID/GID as build args
-#ARG USERNAME=vscode
-#ARG UID=1000
-#ARG GID=1000
-
-# Set up user
-#RUN groupadd --gid $GID $USERNAME \
-#    && useradd --uid $UID --gid $GID -m $USERNAME -s /bin/bash \
-#    && apt-get update && apt-get install -y sudo \
-#    && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
-
 USER root
 ENV PATH="/opt/conda/bin:$PATH"
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    python3 python3-pip python3-dev gcc libpq-dev \
-    && apt-get clean
+RUN apt-get update && \
+    apt-get install -y \
+    python3 python3-pip python3-dev gcc libpq-dev curl && \
+    apt-get install -y postgresql-client && \
+    apt-get clean
 
-# Set up working directory with correct ownership
+
+# Install cloudflared binary
+RUN curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+    -o /usr/local/bin/cloudflared && \
+    chmod +x /usr/local/bin/cloudflared
+
+# Set up working directory
 WORKDIR /workspace
-#RUN chown $USERNAME:$USERNAME /workspace
 
 # Install PyTorch with CUDA 12.1
 RUN pip install --no-cache-dir torch==2.3.0+cu121 torchvision==0.18.0+cu121 torchaudio==2.3.0+cu121 \
     --extra-index-url https://download.pytorch.org/whl/cu121
 
-
+# Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy app source
+COPY . .
+
+# Ensure entrypoint script present and executable
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Use entrypoint.sh to launch cloudflared + worker app
+
+#PRODUCTION Entrypoint
+#ENTRYPOINT ["/entrypoint.sh"]
 
 
-
-#USER $USERNAME
-
-# Keep container alive
+#DEBUG Entrypoint
 CMD tail -f /dev/null

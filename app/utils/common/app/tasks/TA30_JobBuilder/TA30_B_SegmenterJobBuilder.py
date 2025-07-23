@@ -52,6 +52,7 @@ class TA30_B_SegmenterJobBuilder:
         }
 
 
+
         # 1) Explode so each parent_job_uuid is its own row
         exploded_df = job_df_raw.explode("parent_job_uuids").rename(columns={"parent_job_uuids": "job_uuid"})
 

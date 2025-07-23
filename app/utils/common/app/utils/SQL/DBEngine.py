@@ -50,8 +50,8 @@ class DBEngine:
     def _build_pg_url(self, db_key: str) -> str:
         user = os.getenv("DB_USER")
         pwd = os.getenv("DB_PASSWORD")
-        host = os.getenv("DB_HOST")
-        port = os.getenv("DB_PORT")
+        host = os.getenv("DB_HOST_TUNNEL_SOCKET")
+        port = os.getenv("DB_PORT_PRIVATE")
         db = os.getenv(f"DB_{db_key.upper()}_NAME")  # e.g. DB_SOURCE_NAME
 
         if not all([user, pwd, host, port, db]):

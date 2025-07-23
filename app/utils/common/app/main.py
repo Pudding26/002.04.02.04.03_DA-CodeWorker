@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 import logging
 
 from app.utils.common.app.utils.logger.loggingWrapper import LoggingHandler
-from app.utils.common.app.utils.API.TaskRouter import router as task_router
+from app.utils.router.GPU_router import GPU_router
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.tasks.TA01_setup.TA01_A_SQLSetup import TA01_A_SQLSetup
@@ -51,7 +51,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(task_router, prefix="/tasks", tags=["tasks"])
+app.include_router(GPU_router)
 
 @app.get("/")
 def read_root():

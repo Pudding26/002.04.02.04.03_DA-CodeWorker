@@ -102,6 +102,7 @@ class StackDataLoader:
         df_counts_unique = (
             df_long[["shotID", "stackID", "bin_type", "bin_label", "bin_count"]]
             .drop_duplicates(subset=["shotID", "stackID", "bin_type", "bin_label"])
+            .copy()  # FIXES: SettingWithCopyWarning
         )
 
         # Create count and fraction column names

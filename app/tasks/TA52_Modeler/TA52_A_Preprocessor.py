@@ -32,10 +32,7 @@ import cudf
 
 
 ## Variables
-### QM_Sampling
-MIN_CLASSES = 2
-MIN_PER_CLASS = 5
-MIN_ROWS = 40
+
 ## QM_Scaling
 SCALING_VAIRANCE_TRESHOLD = 1e-8
 MIN_ROWS_SCALING = 2
@@ -415,193 +412,41 @@ class TA52_A_Preprocessor:
         logging.debug2("Data scaling and NaN handling completed.")
 
 
+
+
+
+
         # ------------------------------ Step03: Sampling
 
-        @staticmethod
-        def step03_sampling(job):
-            """
-            Step 03 – Sampling: Applies the specified sampling method to the dataset.
-
-            This step performs data sampling based on the preProcessing_instructions:
-            ▸ Uses the configured method (e.g., resampling, undersampling, oversampling)
-            ▸ Applies the submethod and subsubmethod as defined in the job's input config
-            ▸ Handles quality management before sampling to ensure data integrity
-
-            Parameters
-            ----------
-            job : ModelerJob
-                The current job with:
-                - `attrs.data_num`: CuPy ndarray of numeric data
-                - `input.preProcessing_instructions`: Configuration for sampling
-
-            Returns
-            -------
-            job : ModelerJob
-                Modified job with sampled data in `attrs.data_num`, or marked as FAILED on error.
-            """
-
-            from app.tasks.TA52_Modeler.utils.TA52_A_utils.qm_pre_sampling import qm_pre_sampling
-
-            from app.tasks.TA52_Modeler.utils.TA52_A_utils.sampler.random_sampler import random_sampler
-            from app.tasks.TA52_Modeler.utils.TA52_A_utils.sampler.SMOTE_sampler import smote_sampler
-
-            t0 = time.time()
-            shape_before = list(job.attrs.data_num.shape)
-
-
-
-            try:
-                logging.debug2("Starting sampling...")
-                logging.debug1("Pre-sampling quality management...")
-
-                # --- Quality check before sampling
-                job = qm_pre_sampling(
-                    job,
-                    min_classes=MIN_CLASSES,
-                    min_per_class=MIN_PER_CLASS,
-                    min_rows=MIN_ROWS
-                )
-                if job.status == "FAILED":
-                    return job
-
-                job.input.fail_trail.mark("preprocessing", "qm_pre_sampling", "passed")
-                logging.debug1("Pre-sampling quality management passed.")
-
-                # --- Retrieve sampling config from flat structure
-                cfg = job.input.preProcessing_instructions.resampling
-                if not cfg or not cfg.method:
-                    # ⛔ No sampling configured – skip this step
-                    logging.debug2("No sampling method configured. Skipping sampling step.")
-                    elapsed = round(time.time() - t0, 3)
-                    job.stats["preprocessing"]["step_F_sampling"] = {
-                        "elapsed_time": elapsed,
-                        "shape_initial": shape_before,
-                        "shape_after": shape_before,
-                        "shape_change": [0, 0],
-                        "sampler_method": "none",
-                        "scope": job.input.scope
-                    }
-                    job.stats["preprocessing"]["total_elapsed_time"] = round(
-                        job.stats["preprocessing"].get("total_elapsed_time", 0.0) + elapsed, 3
-                    )
-                    job.input.fail_trail.mark("preprocessing", "sampling", "skipped")
-                    return job
-
-                sampler_method = cfg.method
-                sampler_cfg = getattr(cfg, sampler_method, None)
-                if sampler_cfg is None:
-                    raise ValueError(f"Sampler config block for '{sampler_method}' is missing")
-
-                logging.debug2(f"Applying sampler: {sampler_method} with scope: {job.input.scope}")
-
-                # --- Dispatch to actual sampling implementation
-                match sampler_method:
-                    case "RandomSampler":
-                        X_out = random_sampler(job)
-                    case "SMOTESampler":
-                        X_out = smote_sampler(job)
-                    case _:
-                        raise ValueError(f"Unsupported sampling method: {sampler_method}")
-
-                # --- Apply result
-                job.attrs.data_num = X_out
-                shape_after = list(job.attrs.data_num.shape)
-                elapsed = round(time.time() - t0, 3)
-
-                # --- Log stats
-                job.stats["preprocessing"]["step_F_sampling"] = {
-                    "elapsed_time": elapsed,
-                    "shape_initial": shape_before,
-                    "shape_after": shape_after,
-                    "shape_change": [shape_after[0] - shape_before[0], shape_after[1] - shape_before[1]],
-                    "sampler_method": sampler_method,
-                    "scope": job.input.scope
-                }
-
-                job.stats["preprocessing"]["total_elapsed_time"] = round(
-                    job.stats["preprocessing"].get("total_elapsed_time", 0.0) + elapsed, 3
-                )
-
-                job.input.fail_trail.mark("preprocessing", "sampling", "passed")
-                return job
-
-
-            except Exception as e:
-                logging.error(
-                    f"[PREPROCESS ERROR] Sampling step failed for job {getattr(job, 'id', 'unknown')}",
-                    exc_info=True
-                )
-                job.status = "FAILED"
-                job.input.fail_trail.mark("preprocessing", "sampling", f"failed: {str(e)}")
-                return job
-
-            
-
-        job = step03_sampling(job)
-        if job.status == "FAILED":
-            return job
 
         # ---------------------------------------------------------------- stats
+        
         @staticmethod
         def step_C_wrapup(job):
             """
-            Step C – Finalize preprocessing
-
-            Performs final checks and assignments before returning the job:
-            - Drops remaining NaNs (if needed)
-            - Verifies post-sampling row loss
-            - Stores `preProcessed_data` for downstream stages
-            - Updates context and summary logs
-
-            Parameters
-            ----------
-            job : ModelerJob
-                The job after all preprocessing steps
-            shape_before : list
-                Shape before sampling step (used to detect excessive row loss)
-
-            Returns
-            -------
-            job : ModelerJob
-                Finalized job object or marked as FAILED
+            Minimal wrap-up for truncated preprocessor:
+            ▸ Drops NaNs (optional safety)
+            ▸ Stores preProcessed_data
+            ▸ Sets context and logs
             """
+            # Optionally drop NaNs from final preprocessed matrix
+            try:
+                job, dropped = TA52_A_Preprocessor._drop_nans(job)
+                job.stats["preprocessing"]["dropped_nans_after_weighting"] = dropped
+            except Exception as e:
+                logging.warning(f"[PREPROCESS WRAPUP] Failed to drop NaNs safely: {str(e)}")
 
-            shape_before = list(job.attrs.data_num.shape)
-
-            # Drop any NaNs left
-            job, dropped = TA52_A_Preprocessor._drop_nans(job)
-            job = TA52_A_Preprocessor._check_dropped_fraction(job, shape_before, dropped)
-            job.stats["preprocessing"]["dropped_nans_after_sampling"] = dropped
-
-            if job.status == "FAILED":
-                logging.warning(
-                    f"[PREPROCESS] Job {job.job_uuid} failed due to excessive NaN rows dropped ({dropped}) after sampling."
-                )
-                return job
-
-            # Final assignment
+            # Always store preProcessed_data (even if no NaNs dropped)
             job.attrs.preProcessed_data = job.attrs.data_num
 
-            # Set job context based on method (if configured)
-            method = "none"
-            try:
-                res_cfg = job.input.preProcessing_instructions.resampling
-                if res_cfg and res_cfg.method:
-                    method = res_cfg.method
-            except Exception:
-                pass
+            # Set human-readable context message
+            job.context = "SUCCESS of: Preprocessing without sampling"
 
-            job.context = f"SUCCESS of: Preprocessing with method: {method}"
-
-            logging.debug1("SUCCESS")
-            logging.debug3(
-                f"Preprocessing completed in {job.stats['preprocessing'].get('total_elapsed_time', 'N/A')} seconds"
-            )
+            logging.debug1("[PREPROCESSOR] Completed truncated flow after bin weighting.")
 
             return job
-
-
         
+            
         job = step_C_wrapup(job)
         return job
 
@@ -738,7 +583,9 @@ class TA52_A_Preprocessor:
         job.attrs.encoder             = type("Enc", (), {})()  # tiny namespace object
         job.attrs.encoder.cols        = col_encoder
         job.attrs.encoder.vals        = enc_vals
-
+        job.input.initial_rows_count =  data_num_df.shape[0]
+        job.input.initial_cols_count =  data_num_df.shape[1]
+        
         # 🆕 7️⃣ blacklist info
         job.attrs.blacklist = {
             "index_cols": index_present,
@@ -797,3 +644,81 @@ class TA52_A_Preprocessor:
 
         job.attrs.raw_data = pd.concat([df] * factor, ignore_index=True)
         logging.info(f"Synthetic data expansion complete: {len(df)} → {len(job.attrs.raw_data)} rows")
+
+
+## LEGACY
+def legacy():
+    pass
+
+    @staticmethod
+    def step_C_wrapup(job):
+        """
+        Step C – Finalize preprocessing
+
+        Performs final checks and assignments before returning the job:
+        - Drops remaining NaNs (if needed)
+        - Verifies post-sampling row loss
+        - Stores `preProcessed_data` for downstream stages
+        - Updates context and summary logs
+
+        Parameters
+        ----------
+        job : ModelerJob
+            The job after all preprocessing steps
+        shape_before : list
+            Shape before sampling step (used to detect excessive row loss)
+
+        Returns
+        -------
+        job : ModelerJob
+            Finalized job object or marked as FAILED
+        """
+
+        shape_before = list(job.attrs.data_num.shape)
+
+        # Drop any NaNs left
+        job, dropped = TA52_A_Preprocessor._drop_nans(job)
+        job = TA52_A_Preprocessor._check_dropped_fraction(job, shape_before, dropped)
+        job.stats["preprocessing"]["dropped_nans_after_sampling"] = dropped
+
+        if job.status == "FAILED":
+            logging.warning(
+                f"[PREPROCESS] Job {job.job_uuid} failed due to excessive NaN rows dropped ({dropped}) after sampling."
+            )
+            return job
+
+        # Final assignment
+        job.attrs.preProcessed_data = job.attrs.data_num
+
+        # Set job context based on method (if configured)
+        method = "none"
+        try:
+            res_cfg = job.input.preProcessing_instructions.resampling
+            if res_cfg and res_cfg.method:
+                method = res_cfg.method
+        except Exception:
+            pass
+
+        job.context = f"SUCCESS of: Preprocessing with method: {method}"
+
+        logging.debug1("SUCCESS")
+        logging.debug3(
+            f"Preprocessing completed in {job.stats['preprocessing'].get('total_elapsed_time', 'N/A')} seconds"
+        )
+
+        return job
+
+
+
+
+
+    # BOOTSTRAPPING
+    from app.tasks.TA52_Modeler.utils.TA52_A_utils.sampler.bootstrap_sampler import bootstrap_sampler
+
+    bootstrap_cfg = job.input.preProcessing_instructions.bootstrapping
+
+    n_iter = bootstrap_cfg.n_iterations
+    n_samples = bootstrap_cfg.n_samples
+    successful_runs = []
+    failed_runs = []
+    subjobs = []

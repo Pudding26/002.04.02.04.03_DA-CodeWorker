@@ -29,45 +29,85 @@ class ModelerFailTrail(BaseModel):
     """
     FailTrail for tracking step-wise pass/fail states.
     Allows flexible nested structure while exposing mark().
+    Also records last failure/error for quick retrieval.
     """
     preprocessing: Dict[str, Any] = {}
     modelling: Dict[str, Any] = {}
     validation: Dict[Any, Any] = {}
+    last_fail: Optional[Dict[str, Any]] = None
 
-    def mark(self, section: str, step_name: str, status: Literal["passed", "failed", "skipped"], error: Optional[str] = None):
-        """
-        Backward-compatible flat marker for legacy stages.
-        e.g., fail_trail.mark("modelling", "step_02", "failed")
-        """
-        section_dict = getattr(self, section, None)
-        if isinstance(section_dict, dict):
-            section_dict[step_name] = {"status": status, "error": error}
-        else:
-            setattr(self, section, {step_name: {"status": status, "error": error}})
-
-    def mark_validation(
+    def mark(
         self,
-        bootstrap: int,
-        label: str,
-        frac: float,
-        model: str,
-        status: Literal["passed", "failed", "skipped"],
+        section: str,
+        step_name: str,
+        status: Literal["passed", "failed", "skipped", "error"],
         error: Optional[str] = None
     ):
         """
-        Nested fail marking for new validator system
-        e.g., fail_trail.mark_validation(0, "genus", 0.1, "rf", "passed")
+        Legacy-compatible flat marker.
+        Tracks status + stores last_fail if failed/error.
+        """
+        section_dict = getattr(self, section, None)
+        entry = {"status": status, "error": error}
+
+        if isinstance(section_dict, dict):
+            section_dict[step_name] = entry
+        else:
+            setattr(self, section, {step_name: entry})
+
+ 
+        self.last_fail = {
+            "section": section,
+            "step": step_name,
+            "status": status,
+            "error": error
+        }
+
+    def mark_validation(
+        self,
+        fold_no: int,
+        bootstrap_no: int,
+        label: str,
+        frac: float,
+        model: str,
+        status: Literal["passed", "failed", "skipped", "error"],
+        error: Optional[str] = None
+    ):
+        """
+        Nested marker for validator with fold/boostrap context.
+        Also updates last_fail if failed/error.
         """
         self.validation \
-            .setdefault(bootstrap, {}) \
+            .setdefault(fold_no, {}) \
+            .setdefault(bootstrap_no, {}) \
             .setdefault(label, {}) \
             .setdefault(frac, {})[model] = {
                 "status": status,
-                "error": error,
+                "error": error
             }
 
-    def __getitem__(self, key):
-        return getattr(self, key)
+        self.last_fail = {
+            "section": "validation",
+            "fold_no": fold_no,
+            "bootstrap_no": bootstrap_no,
+            "label": label,
+            "frac": frac,
+            "model": model,
+            "status": status,
+            "error": error
+        }
+
+
+    def get_last_fail_reason(self) -> Optional[str]:
+        if self.last_fail:
+            return self.last_fail.get("error")
+        return None
+    
+    def get_last_status(self) -> Optional[str]:
+        if self.last_fail:
+            return self.last_fail.get("status")
+        return None
+    
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -155,7 +195,16 @@ class ModelerJobInput(BaseModel):
     scope: Optional[str] = None                         # Taxonomic scope for resampling (e.g., species)
     index_col: Optional[int] = None                     # Encoded label column (for classification)
 
-    bootstrap_iteration: int = 0                        # 0 = normal run; 1-N = bootstrapped replicate
+    outer_fold: Optional[int] = None                    # Outer fold number for cross-validation
+
+    bootstrap_iteration: Optional[int] = None            # 0 = normal run; 1-N = bootstrapped replicate
+
+    initial_cols_count: Optional[int] = None              # Initial column count
+    initial_rows_count: Optional[int] = None                     # Initial number of rows before any processing
+
+    validation_cols: Optional[float] = None  # Columns used for validation (e.g., labels)
+    validation_rows: Optional[float] = None  # Number of rows used for validation
+    
     fail_trail: Optional[ModelerFailTrail] = Field(default_factory=ModelerFailTrail)
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -167,15 +216,57 @@ class ModelerJobInput(BaseModel):
 
 class ModelerAttrs(BaseModel):
     """
-    Contains the state of the job during/after execution:
-    raw inputs, transformed matrices, modeling output, validation results.
+    State container for a modeler job during and after execution.
+
+    This object holds all intermediate and final state for a modeling pipeline run:
+    from raw inputs, through preprocessing and dimensionality reduction,
+    to model training, validation, and results.
+
+    Fields:
+    --------
+    raw_data : Optional[Any]
+        Original raw input data as a pandas.DataFrame, before any GPU preprocessing.
+
+    encoder : Optional[Any]
+        Single source of truth for encoding mappings:
+        ▸ encoder.cols : dict[str → int] — maps column names to column indices in all numeric matrices.
+        ▸ encoder.vals : dict[str → cudf.Series] — maps column names to their encoded categories (for inverse mapping if needed).
+        Preserved consistently across all sub-jobs to ensure reproducibility.
+
+    data_num : Optional[Any]
+        Current working dataset as a GPU-compatible numeric matrix (CuPy or NumPy ndarray).
+        ▸ In the refactored pipeline: always holds the **training partition after train/test split**.
+        ▸ Acts as input for sampler, bootstrapper, PCA, and downstream modeler modules.
+        ▸ All columns indexed according to `encoder.cols`.
+
+    data_test : Optional[Any]
+        Test (holdout) dataset as a GPU-compatible numeric matrix.
+        ▸ Untouched by sampling/bootstrapping.
+        ▸ Same structure and encoding as `data_num`.
+        ▸ Used by validator after applying PCA transform from training partition.
+
+    data_train : Optional[Any]
+        Optional explicit training dataset.
+        Encoded TRAIN partition after splitter.
+        The main working dataset for sampler, bootstrapper, PCA, etc.
     """
     raw_data: Optional[Any] = None                      # Raw pandas.DataFrame before processing
-    preProcessed_data: Optional[Any] = None             # Preprocessed array (cupy/numpy)
+    
+    encoder: Optional[Any] = None                       # Column name → index encoder dict
+    
     data_num: Optional[Any] = None                      # Numeric features ready for modeling
+    
+    
+    data_train: Optional[Any] = None                   # Training data (cupy/numpy)
+    data_test: Optional[Any] = None                    # Test data (cupy/numpy)
+    
+    
+    
+    
+    
+    preProcessed_data: Optional[Any] = None             # Preprocessed array (cupy/numpy)
     model_results: Optional[Any] = None                 # Pandas DF from model stage
 
-    encoder: Optional[Any] = None                       # Column name → index encoder dict
     colname_encoder: Optional[List[str]] = None         # Index → column name list
 
     engineered_data: Optional[Any] = None               # Output of feature engineering step

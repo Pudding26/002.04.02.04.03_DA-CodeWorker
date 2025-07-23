@@ -25,8 +25,8 @@ class TA01_A_SQLSetup:
     """
     user = os.getenv("DB_USER")
     password = os.getenv("DB_PASSWORD")
-    host = os.getenv("DB_HOST")
-    port = os.getenv("DB_PORT")
+    host = os.getenv("DB_HOSTNAME_PUBLIC")
+    port = os.getenv("DB_PORT_PUBLIC")
     default_db = "postgres"
 
     connection_url = f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{default_db}"

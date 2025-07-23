@@ -49,7 +49,8 @@ from sklearn.metrics import (
 # Project‑specific storage helpers (replace the import path with your package)
 # ---------------------------------------------------------------------------
 from app.utils.common.app.utils.dataModels.Jobs.ModelerJob import ModelerJob
-
+from app.tasks.TA52_Modeler.utils.TA52_C_utils.check_gpu_memory import check_gpu_memory
+from app.tasks.TA52_Modeler.utils.TA52_C_utils.get_gpu_stats import get_gpu_stats, log_gpu_status
 
 
 # ---------------------------------------------------------------------------
@@ -79,14 +80,14 @@ PARAMS_DICT = {
     "RF_N_ESTIMATORS": 25,
     "RF_MAX_DEPTH": 8,
     "RF_MAX_FEATURES": "sqrt",
-    "RF_N_BINS": 64,
+    "RF_N_BINS": 16,
     "RF_NUM_FOLDS": 5,
     "ACCURACY_METRIC": "balanced_accuracy", # Use balanced accuracy for imbalanced datasets, cuml specific, espacially usefull for biodata
 
     "KNN_NUM_FOLDS": 5,
     "KNN_N_NEIGHBORS": 5,
 
-    "MIN_SAMPLE_THRESHOLD": 20,
+    "MIN_SAMPLE_THRESHOLD": 50,
 
     "HDBSCAN_MIN_CLUSTER_DEFAULT": 20,
     "HDBSCAN_MIN_SAMPLE_THRESHOLD": 40,  # Minimal amount of rows to prevent weird cupy/HDBSCAN RapidsAI bug
@@ -232,63 +233,119 @@ class TA52_C_Validator:
             from app.tasks.TA52_Modeler.utils.TA52_C_utils.rf_validation_classifier import rf_validation_classifier
             from app.tasks.TA52_Modeler.utils.TA52_C_utils.hdb_validation_classifier import hdb_validation_classifier
 
-            for frac, result_dict in job.attrs.dim_red_dict.items():
-                for bootstrap_no , result in result_dict.items():
-                    
-                    Z_raw: cp.ndarray = result["Z"]
-                    col_map = result["col_map"]
-                    end_idx = col_map["index"]["end_idx"]
-                    
-                    # Extract full index block + reduced feature block
-                    index_col_names = col_map["index"]["input"]
-                    y_cols: cp.ndarray = Z_raw[:, :end_idx]
-                    Z: cp.ndarray = Z_raw[:, end_idx:]
-                    
-                    validation_col_count = Z.shape[1]
-                    validation_row_count = Z.shape[0]#
-                    inital_col_count = job.attrs.raw_data.shape[1]
-                    inital_row_count = job.attrs.raw_data.shape[0]
+
+            if not hasattr(job.attrs, "uniques") or job.attrs.uniques is None:
+                job.attrs.uniques = {}
 
 
-                    for idx, label in enumerate(index_col_names):
 
-                        if job.attrs.uniques is None:
-                            job.attrs.uniques = {}
 
-                        job.attrs.uniques.setdefault(label, {}).setdefault(frac, {})
+            for fold_no, bootstrap_dict in job.attrs.dim_red_dict.items():
+                logging.debug2_status(f"[VALIDATOR] Loop: fold {fold_no}/{len(job.attrs.dim_red_dict)}", overwrite=True)
+                for bootstrap_no, frac_dict in bootstrap_dict.items():
+
+                    logging.debug2_status(f"[VALIDATOR] Processing bootstrap {bootstrap_no}/{len(frac_dict)}", overwrite=True)
+                    for frac, result in frac_dict.items():
+                        logging.debug2_status(f"[VALIDATOR] Processing frac {frac:.2f} ({len(result['Z_train'])} rows)", overwrite=True)
+                        col_map = result["col_map"]
+                        end_idx = col_map["index"]["end_idx"]
+                        index_col_names = col_map["index"]["input"]
+
+                        # Extract embeddings:
+                        Z_train_raw = result["Z_train"]
+                        Z_test_raw  = result["Z_test"]
+
+                        # Split into index columns and PCA-reduced features:
+                        index_block_train = Z_train_raw[:, :end_idx]
+                        Z_train = Z_train_raw[:, end_idx:]
+
+                        index_block_test = Z_test_raw[:, :end_idx]
+                        Z_test = Z_test_raw[:, end_idx:]
+
+                        path = [fold_no, bootstrap_no, frac]
                         
-                        job.attrs.uniques[label][frac][bootstrap_no] = TA52_C_Validator.compute_uniques_from_y_cols(
-                                                                                                    y_cols=y_cols,
-                                                                                                    col_map=col_map
-                                                                                                )
- 
+                        TA52_C_Validator.compute_uniques_from_y_cols(
+                            path=path,
+                            y_cols=index_block_train,
+                            col_map=col_map,
+                            source_data="train",
+                            uniques_dict=job.attrs.uniques
+                        )
 
-                        y_col = y_cols[:, idx]
-                        logging.debug1(f"[VALIDATOR] Starting KNN-Validation with label='{label}' @ frac={frac:.2f} (bootstrap={bootstrap_no})")
-                        job = knn_validation_classifier(job, Z, y_col, label, frac,)
-                        logging.debug1(f"[VALIDATOR] Completed KNN-Validation with label='{label}' @ frac={frac:.2f} (bootstrap={bootstrap_no})")
-                        logging.debug1(f"[VALIDATOR] Starting RF-Validation with label='{label}' @ frac={frac:.2f} (bootstrap={bootstrap_no})")
-                        job = rf_validation_classifier(job, Z, y_col, label, frac,)
-                        logging.debug1(f"[VALIDATOR] Completed RF-Validation with label='{label}' @ frac={frac:.2f} (bootstrap={bootstrap_no})")
-                        #logging.debug1(f"[VALIDATOR] Starting HDBSCAN-Validation with label='{label}' @ frac={frac:.2f} (bootstrap={bootstrap_no})")
-                      
+                        TA52_C_Validator.compute_uniques_from_y_cols(
+                            path=path,
+                            y_cols=index_block_test,
+                            col_map=col_map,
+                            source_data="test",
+                            uniques_dict=job.attrs.uniques
+                        )
 
-                        #job = hdb_validation_classifier(job, Z, y_col, label, frac,)
-                        #logging.debug1(f"[VALIDATOR] Completed HDBSCAN-Validation with label='{label}' @ frac={frac:.2f} (bootstrap={bootstrap_no})")
 
-                        job.attrs.validation_results_dict \
-                            .setdefault(bootstrap_no, {}) \
-                            .setdefault(label, {}) \
-                            .setdefault(frac, {})['meta_data'] = {
-                                "scope": job.input.scope,
-                                "label": label,
-                                "frac": frac,
-                                "bootstrap": bootstrap_no,
-                                "validation_col_count": validation_col_count,
-                                "validation_row_count": validation_row_count,
-                                "inital_col_count": inital_col_count,
-                                "inital_row_count": inital_row_count
-                            }
+
+
+                        validation_col_count = Z_test.shape[1]
+                        validation_row_count = Z_test.shape[0]
+
+                        initial_col_count = job.input.initial_cols_count
+                        initial_row_count = job.input.initial_rows_count
+
+                        for label in index_col_names:
+                            logging.debug2_status(f"[VALIDATOR] Processing label '{label}'", overwrite=True)
+
+                            if label not in job.attrs.encoder.cols:
+                                continue
+
+
+                            
+                            col_idx = index_col_names.index(label)
+
+                            y_train = index_block_train[:, col_idx]
+                            y_test  = index_block_test[:, col_idx]
+
+                            #logging.debug2(
+                            #    f"[VALIDATOR] train classes={cp.unique(y_train).tolist()} "
+                            #    f"test classes={cp.unique(y_test).tolist()}"
+                            #)
+
+
+                            check_gpu_memory(min_free_mb=500)
+                            gpu_stats = get_gpu_stats()
+                            cp.cuda.Device(0).synchronize()
+                            cp.get_default_memory_pool().free_all_blocks()
+
+
+                            #logging.debug2(f"[VALIDATOR] Checking input sanity before RF…")
+                            #logging.debug2(f"[VALIDATOR] Z_test shape={Z_test.shape}, dtype={Z_test.dtype}, min={cp.min(Z_test).item()}, max={cp.max(Z_test).item()}, nan={cp.isnan(Z_test).sum().item()}, inf={cp.isinf(Z_test).sum().item()}")
+                            #logging.debug2(f"[VALIDATOR] Z_train shape={Z_train.shape}, dtype={Z_train.dtype}, min={cp.min(Z_train).item()}, max={cp.max(Z_train).item()}, nan={cp.isnan(Z_train).sum().item()}, inf={cp.isinf(Z_train).sum().item()}")
+
+                        
+                            classifier = "KNN"
+                            logging.debug2_status(f"[VALIDATOR] Running classifier {classifier}| train data {Z_train.shape} train_y {y_train.shape}| Z_test {Z_test.shape} {y_test.shape}", overwrite=True)
+                            #log_gpu_status()
+                            job = knn_validation_classifier(
+                                job,
+                                Z_train, y_train,
+                                Z_test, y_test,
+                                label,
+                                frac
+                            )
+
+                            #classifier = "RF"
+                            #logging.debug2_status(f"[VALIDATOR] Running classifier {classifier}", overwrite=True)
+                            ##log_gpu_status()
+                            #job = rf_validation_classifier(
+                            #    job,
+                            #    Z_train, y_train,
+                            #    Z_test, y_test,
+                            #    label,
+                            #    frac
+                            #)
+                            classifier = "idle"
+                            logging.debug2_status(f"[VALIDATOR] Running classifier {classifier}", overwrite=True)
+
+
+
+
 
             try:
                 job.attrs.validation_results_df = TA52_C_Validator.build_validation_results_df(job)
@@ -320,59 +377,73 @@ class TA52_C_Validator:
 
 
 
-
     def compute_uniques_from_y_cols(
-        y_cols: cp.ndarray,
-        col_map: dict
-    ) -> dict:
+            path: list,
+            y_cols: cp.ndarray,
+            col_map: dict,
+            source_data: str = "train",
+            uniques_dict: dict = None
+        ) -> None:
         """
-        Compute number of unique values and entropy for each retained index column.
+        Compute number of unique values and entropy for each retained index column,
+        and store them in a nested dictionary structure based on the provided path.
 
         Parameters
         ----------
+        path : list
+            List of keys representing the nesting structure in the output dictionary.
         y_cols : cp.ndarray
             The index block extracted from Z_raw[:, :end_idx].
         col_map : dict
             col_map["index"]["input"] = {int → str} mapping from column index to label name.
+        source_data : str, optional
+            Identifier for the source of the data (default is "train").
 
         Returns
         -------
         dict
-            Dictionary with keys like "family_n_unique", "family_entropy", ..., plus "n_rows".
+            Nested dictionary with keys based on the path and containing unique counts
+            and entropy for each index column.
         """
-        uniques = {}
-
-        def compute_entropy(col):
+        def compute_normalized_entropy(col):
             _, counts = cp.unique(col, return_counts=True)
             probs = counts / counts.sum()
-            return float(-cp.sum(probs * cp.log2(probs)))
+            entropy = float(-cp.sum(probs * cp.log2(probs)))
+            max_entropy = float(cp.log2(len(counts))) if len(counts) > 1 else 1
+            return entropy / max_entropy
+
+
+  
+        if uniques_dict is None:
+            uniques_dict = {}
+
+        current_level = uniques_dict
+        for key in path:
+            if key not in current_level:
+                current_level[key] = {}
+            current_level = current_level[key]
 
         for idx, col_name in enumerate(col_map["index"]["input"]):
             col = y_cols[:, idx]
             n_unique = int(cp.unique(col).shape[0])
-            entropy = compute_entropy(col)
+            entropy = compute_normalized_entropy(col)
 
-            uniques[f"{col_name}_n_unique"] = n_unique
-            uniques[f"{col_name}_entropy"] = entropy
+            current_level[f"{col_name}_n_unique_{source_data}"] = n_unique
+            current_level[f"{col_name}_entropy_{source_data}"] = entropy
 
-        uniques["n_rows"] = int(y_cols.shape[0])
-        return uniques
+
 
 
 
     def build_validation_results_df(job) -> pd.DataFrame | None:
         """
-        Convert `job.attrs.validation_results` into a flat DataFrame.
+        Convert `job.attrs.validation_results_dict` into a flat DataFrame.
 
-        Each row represents a (bootstrap, label, frac) result and contains:
+        Each row represents a (fold_no, bootstrap_no, label, frac) result and contains:
             - accuracy scores (rf, knn)
             - clustering metrics (ARI, NMI, Silhouette) including HDBSCAN variants
-            - metadata: scope, label, frac, bootstrap, DoE_UUID
+            - metadata: scope, label, frac, bootstrap_no, fold_no, DoE_UUID
             - unique counts from job.attrs.uniques
-
-        Parameters
-        ----------
-        job : ModelerJob
 
         Returns
         -------
@@ -384,6 +455,13 @@ class TA52_C_Validator:
         results = job.attrs.validation_results_dict
         scope = getattr(job.input, "scope", "default_scope")
         uuid = getattr(job, "job_uuid", "unknown")
+        fold_no = getattr(job.input, "outer_fold", 0)
+        bootstrap_no = getattr(job.input, "bootstrap_iteration", 0)
+        validation_col_count = getattr(job.input, "validation_col_count", 0)
+        validation_row_count = getattr(job.input, "validation_row_count", 0)
+        initial_col_count = getattr(job.input, "initial_cols_count", 0)
+        initial_row_count = getattr(job.input, "initial_rows_count", 0)
+        
         parent_uuid = job.parent_job_uuids[0] if job.parent_job_uuids else uuid
 
         if not results:
@@ -392,58 +470,52 @@ class TA52_C_Validator:
 
         records = []
 
-        for bootstrap, labels_dict in results.items():
-            for label, fracs_dict in labels_dict.items():
-                for frac, metrics in fracs_dict.items():
-                    # Pull unique counts if available
-                    uniques_dict = (
-                        job.attrs.uniques
-                        .get(label, {})
-                        .get(frac, {})
-                        .get(bootstrap, {})
-                        if job.attrs.uniques else {}
-                    )
-
-                    row = {
-                        "DoE_UUID": parent_uuid,
-                        "scope": scope,
-                        "job_uuid": uuid,
-                        "bootstrap": bootstrap,
-                        "frac": frac,
-                        "label": label,
-                        "rf_acc": metrics.get("rf_acc"),
-                        "knn_acc": metrics.get("knn_acc"),
-                        "initial_col_count": metrics["meta_data"].get("inital_col_count"),
-                        "initial_row_count": metrics["meta_data"].get("inital_row_count"),
-                        "validation_col_count": metrics["meta_data"].get("validation_col_count"),
-                        "validation_row_count": metrics["meta_data"].get("validation_row_count"),
-                    }
-
-                    # Dynamically extract any HDBSCAN variants present
-                    for key, val in metrics.items():
-                        if key.startswith("ari_") or key.startswith("nmi_") or key.startswith("silhouette_"):
-                            row[key] = val
-
-                    row.update(uniques_dict)
-                    records.append(row)
-                    
-                    
-                    if "n_rows" in row:
-                        del row["n_rows"]
+        for fold_no, bootstrap_dict in results.items():
+            for bootstrap_no, label_dict in bootstrap_dict.items():
+                for label, frac_dict in label_dict.items():
+                    for frac, metrics in frac_dict.items():
+                        uniques_dict = (
+                            job.attrs.uniques
+                            .get(fold_no, {})
+                            .get(bootstrap_no, {})
+                            .get(frac, {})
+                            if job.attrs.uniques else {}
+                        )
+                        
 
 
+                        row = {
+                            "DoE_UUID": parent_uuid,
+                            "scope": scope,
+                            "job_uuid": uuid,
+                            "fold_no": fold_no,
+                            "bootstrap_no": bootstrap_no,
+                            "frac": frac,
+                            "label": label,
+                            "rf_acc": metrics.get("rf_acc"),
+                            "knn_acc": metrics.get("knn_acc"),
+                            "initial_col_count": initial_col_count,
+                            "initial_row_count": initial_row_count,
+                            "validation_col_count": validation_col_count,
+                            "validation_row_count": validation_row_count,
+                        }
 
+                        for key, val in metrics.items():
+                            if key.startswith("ari_") or key.startswith("nmi_") or key.startswith("silhouette_"):
+                                row[key] = val
 
+                        row.update(uniques_dict)
+
+                        if "n_rows" in row:
+                            del row["n_rows"]
+
+                        records.append(row)
 
         if not records:
             logging.debug2(f"[RESULTS] No metrics extracted for job {uuid}")
             return None
 
         return pd.DataFrame.from_records(records)
-
-
-
-
 
 
 
